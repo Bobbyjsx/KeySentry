@@ -1,10 +1,11 @@
 "use client"
 
 import type React from "react"
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { useState } from "react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { SessionContextProvider } from "@supabase/auth-helpers-react"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -25,10 +26,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   )
 
+  const [supabaseClient] = useState(() => createClientComponentClient())
+
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <SessionContextProvider supabaseClient={supabaseClient}>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </SessionContextProvider>
   )
 }
