@@ -68,14 +68,14 @@ export async function middleware(request: NextRequest) {
 
   // Redirect if accessing protected route without auth
   if (isProtectedRoute && !session) {
-    const redirectUrl = new URL('/login', request.url)
+    const redirectUrl = new URL('/auth/login', request.url)
     if (request.nextUrl.pathname !== redirectUrl.pathname) {
       return NextResponse.redirect(redirectUrl)
     }
   }
 
   // Redirect if accessing auth pages while already logged in
-  const authRoutes = ['/login', '/signup', '/forgot-password', '/reset-password']
+  const authRoutes = ['/auth']
   const isAuthRoute = authRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   )
