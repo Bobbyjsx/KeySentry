@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
-import { AlertCircle, AlertTriangle, Info, Clock, ExternalLink, Bell } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
+import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
+import { AlertCircle, AlertTriangle, Bell, Clock, ExternalLink, Info } from "lucide-react"
+import { useState } from "react"
 
 type Alert = Database["public"]["Tables"]["alerts"]["Row"]
 

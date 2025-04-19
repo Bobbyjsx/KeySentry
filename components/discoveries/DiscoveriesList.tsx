@@ -2,12 +2,11 @@
 
 import React from "react"
 
-import { useState } from "react"
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
-import { ChevronDown, ChevronUp, Copy, ExternalLink, Check, Archive, Trash2, Edit } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
-import { DatabaseIcon } from "lucide-react"
+import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
+import { Archive, Check, ChevronDown, ChevronUp, Copy, DatabaseIcon, Edit, ExternalLink, Trash2 } from "lucide-react"
+import { useState } from "react"
 
 type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"]
 

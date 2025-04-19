@@ -1,11 +1,20 @@
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import Layout from "@/components/Layout"
+import AlertsList from "@/components/alerts/AlertsList"
+import AlertsHeader from "@/components/alerts/AlertsHeader"
 
-export default function AlertsPage() {
+export default async function AlertsPage() {
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+
+  const { data: alerts } = await supabase.from("alerts").select("*").order("created_at", { ascending: false })
+
   return (
     <Layout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-white">Alerts</h1>
-        <p className="text-gray-400">This page will show alerts for critical API key exposures.</p>
+        <AlertsHeader />
+        <AlertsList initialAlerts={alerts || []} />
       </div>
     </Layout>
   )

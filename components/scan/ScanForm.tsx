@@ -2,12 +2,12 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
-import { Search, Github, GitlabIcon as GitlabLogo, FileText, Database, Plus, Minus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { Database as SupabaseDatabase } from "@/types/supabase"
+import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
+import { Database, FileText, Github, GitlabIcon as GitlabLogo, Minus, Plus, Search } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 type ScanSource = {
   type: "github" | "gitlab" | "pastebin" | "other"

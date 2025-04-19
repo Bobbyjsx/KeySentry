@@ -1,13 +1,15 @@
 "use client"
 
+import { Bell, Menu, Search } from "lucide-react"
 import type React from "react"
-import { Menu, Bell, Search, Shield } from "lucide-react"
+import { useSupabase } from "./auth/AuthProvider"
 
 interface NavbarProps {
   toggleSidebar: () => void
 }
 
 const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
+  const {user }= useSupabase()
   return (
     <header className="bg-gray-800 shadow-md z-10">
       <div className="flex items-center justify-between px-4 py-3">
@@ -18,10 +20,10 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
           >
             <Menu size={24} />
           </button>
-          <div className="hidden md:flex items-center ml-4">
+          {/* <div className="hidden md:flex items-center ml-4">
             <Shield className="h-8 w-8 text-indigo-500" />
             <span className="ml-2 text-xl font-semibold">KeySentry</span>
-          </div>
+          </div> */}
         </div>
 
         <div className="flex-1 mx-4 md:mx-8">
@@ -41,11 +43,13 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
           <button className="p-1 rounded-full text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <Bell size={20} />
           </button>
+{user?.user_metadata?.name && (
           <div className="ml-4 relative flex-shrink-0">
             <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center">
-              <span className="text-sm font-medium">TS</span>
+              <span className="text-sm font-medium">{user?.user_metadata?.name}</span>
             </div>
           </div>
+)}
         </div>
       </div>
     </header>
