@@ -1,21 +1,45 @@
-"use client"
 
-import type React from "react"
+import { AlertTriangle, BarChart, Database, LayoutDashboard, LogOut, Settings, Shield, X } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Database, Settings, Shield, AlertTriangle, BarChart, X } from "lucide-react"
+import React from "react"
+import LogoutButton from "./auth/LogoutButton"
 
 interface SidebarProps {
   isOpen: boolean
   toggleSidebar: () => void
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
+interface NavLinkProps {
+  href: string
+  icon: React.ReactNode
+  children: React.ReactNode
+  className?: string
+}
+
+const NavLink: React.FC<NavLinkProps> = ({ href, icon, children, className }) => {
   const pathname = usePathname()
+  const isActive = pathname === href
 
   return (
+    <Link
+      href={href}
+      className={`flex items-center px-4 py-2 rounded-md group transition-colors ${
+        isActive ? "bg-gray-700 text-white" : "text-gray-300 hover:bg-gray-700 hover:text-white"
+      } ${className}`}
+    >
+      {React.cloneElement(icon as React.ReactElement, {
+        // @ts-expect-error expected error
+        className: `mr-3 h-5 w-5 ${isActive ? "text-white" : "text-gray-400 group-hover:text-white"}`
+      })}
+      {children}
+    </Link>
+  )
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
+  return (
     <>
-      {/* Mobile sidebar backdrop */}
       <div
         className={`fixed inset-0 z-20 transition-opacity bg-black bg-opacity-50 lg:hidden ${
           isOpen ? "opacity-100 ease-out duration-300" : "opacity-0 ease-in duration-200 pointer-events-none"
@@ -23,7 +47,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         onClick={toggleSidebar}
       />
 
-      {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-30 w-64 bg-gray-800 shadow-lg transform transition-transform lg:translate-x-0 lg:static lg:inset-0 ${
           isOpen ? "translate-x-0 ease-out duration-300" : "-translate-x-full ease-in duration-200"
@@ -44,89 +67,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
 
         <nav className="p-4">
           <ul className="space-y-2">
-            <li>
-              <Link
-                href="/"
-                className={`flex items-center px-4 py-2 rounded-md group transition-colors ${
-                  pathname === "/" ? "bg-gray-700 text-white" : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                <LayoutDashboard
-                  className={`mr-3 h-5 w-5 ${pathname === "/" ? "text-white" : "text-gray-400 group-hover:text-white"}`}
-                />
-                Dashboard
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/discoveries"
-                className={`flex items-center px-4 py-2 rounded-md group transition-colors ${
-                  pathname === "/discoveries"
-                    ? "bg-gray-700 text-white"
-                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                <Database
-                  className={`mr-3 h-5 w-5 ${
-                    pathname === "/discoveries" ? "text-white" : "text-gray-400 group-hover:text-white"
-                  }`}
-                />
-                Discoveries
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/alerts"
-                className={`flex items-center px-4 py-2 rounded-md group transition-colors ${
-                  pathname === "/alerts" ? "bg-gray-700 text-white" : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                <AlertTriangle
-                  className={`mr-3 h-5 w-5 ${
-                    pathname === "/alerts" ? "text-white" : "text-gray-400 group-hover:text-white"
-                  }`}
-                />
-                Alerts
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/analytics"
-                className={`flex items-center px-4 py-2 rounded-md group transition-colors ${
-                  pathname === "/analytics"
-                    ? "bg-gray-700 text-white"
-                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                <BarChart
-                  className={`mr-3 h-5 w-5 ${
-                    pathname === "/analytics" ? "text-white" : "text-gray-400 group-hover:text-white"
-                  }`}
-                />
-                Analytics
-              </Link>
-            </li>
+            <li><NavLink href="/" icon={<LayoutDashboard />}>Dashboard</NavLink></li>
+            <li><NavLink href="/discoveries" icon={<Database />}>Discoveries</NavLink></li>
+            <li><NavLink href="/alerts" icon={<AlertTriangle />}>Alerts</NavLink></li>
+            <li><NavLink href="/analytics" icon={<BarChart />}>Analytics</NavLink></li>
           </ul>
 
           <div className="pt-4 mt-6 border-t border-gray-700">
-            <Link
-              href="/settings"
-              className={`flex items-center px-4 py-2 rounded-md group transition-colors ${
-                pathname === "/settings" ? "bg-gray-700 text-white" : "text-gray-300 hover:bg-gray-700 hover:text-white"
-              }`}
-            >
-              <Settings
-                className={`mr-3 h-5 w-5 ${
-                  pathname === "/settings" ? "text-white" : "text-gray-400 group-hover:text-white"
-                }`}
-              />
-              Settings
-            </Link>
+            <NavLink href="/settings" icon={<Settings />}>Settings</NavLink>
           </div>
         </nav>
+
+        <section className="absolute bottom-3 w-full px-3">
+          <LogoutButton className="w-full">
+            <div className="flex items-center px-4 py-2 rounded-md group transition-colors bg-gray-700 text-white">
+              <LogOut size={20} className="mr-3 h-5 w-5"/>
+              Sign out
+            </div>
+          </LogoutButton>
+        </section>
       </div>
     </>
   )
 }
-
-export default Sidebar

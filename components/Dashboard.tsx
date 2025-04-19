@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
-import { useQueries, useQuery } from "@tanstack/react-query"
-import KeyTable from "./KeyTable"
-import FilterBar from "./FilterBar"
-import StatsCards from "./StatsCards"
 import { searchAllPatterns, searchPattern } from "@/lib/github"
 import type { ApiKey } from "@/types"
+import { useQueries, useQuery } from "@tanstack/react-query"
 import { AlertCircle, Loader2 } from "lucide-react"
+import { useState } from "react"
+import { useSupabase } from "./auth/AuthProvider"
+import FilterBar from "./FilterBar"
+import KeyTable from "./KeyTable"
+import StatsCards from "./StatsCards"
 
 const Dashboard = () => {
   const [filters, setFilters] = useState({
@@ -75,6 +76,11 @@ const Dashboard = () => {
     providers: new Set(uniqueKeys.map((k) => k.provider)).size || 0,
     sources: patternQueries.filter((q) => q.isSuccess).length,
   }
+
+
+  const { supabase, user, session } = useSupabase()
+
+  console.log("Sessiii",user, session)
 
   return (
     <div className="space-y-6">

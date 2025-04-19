@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { Octokit } from "@octokit/rest"
 import type { ApiKey } from "@/types"
-import { mockApiKeys } from "@/data/mockData"
+import { mockApiKeys } from "@/hooks/data/mockData"
 
 // Create Octokit instance with token
 const octokit = new Octokit({

@@ -2,11 +2,11 @@
 
 import type React from "react"
 
-import { useState } from "react"
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
-import { Settings, Save, Moon, Sun } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
+import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
+import { Moon, Save, Settings, Sun } from "lucide-react"
+import { useState } from "react"
 
 type UserSettings = Database["public"]["Tables"]["user_settings"]["Row"]
 
