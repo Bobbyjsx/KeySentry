@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleSidebar }) => {
         <nav className="p-4">
           <ul className="space-y-2">
             <li><NavLink href="/" icon={<LayoutDashboard />}>Dashboard</NavLink></li>
-            <li><NavLink href="/scan" icon={<Search />}>Scan</NavLink></li>
+            <li><NavLink href="/scan" icon={<Search />}>Scans</NavLink></li>
             <li><NavLink href="/discoveries" icon={<Database />}>Discoveries</NavLink></li>
             <li><NavLink href="/alerts" icon={<AlertTriangle />}>Alerts</NavLink></li>
             <li><NavLink href="/analytics" icon={<BarChart />}>Analytics</NavLink></li>

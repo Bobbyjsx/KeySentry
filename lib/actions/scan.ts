@@ -8,6 +8,7 @@ export interface ScanResult {
   success: boolean
   keysFound: number
   durationSeconds: number
+  scanId: string
 }
 
 export async function startScanAction(
@@ -44,6 +45,7 @@ export async function startScanAction(
       success: true,
       keysFound: result.keysFound,
       durationSeconds: result.durationSeconds,
+      scanId: scanData.id,
     }
   } catch (error: any) {
     // Update status to failed
@@ -83,4 +85,50 @@ export async function getScanHistoryAction(): Promise<ScanHistoryRecord[]> {
   if (error) throw error
 
   return keysToCamel<ScanHistoryRecord[]>(data || [])
+}
+
+export interface ScanDetails {
+  scan: ScanHistoryRecord
+  keys: {
+    id: string
+    keyHash: string
+    provider: string
+    discoveredAt: string
+    status: string
+    source: string
+    link?: string | null
+    repository?: string | null
+    riskLevel: string
+  }[]
+}
+
+export async function getScanDetailsAction(scanId: string): Promise<ScanDetails> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error("Unauthorized")
+  }
+
+  const { data: scanData, error: scanError } = await supabase
+    .from("scan_history")
+    .select("*")
+    .eq("id", scanId)
+    .eq("user_id", user.id)
+    .single()
+
+  if (scanError) throw scanError
+
+  const { data: keysData, error: keysError } = await supabase
+    .from("api_keys")
+    .select("*")
+    .eq("scan_id", scanId)
+    .eq("user_id", user.id)
+
+  if (keysError) throw keysError
+
+  return {
+    scan: keysToCamel<ScanHistoryRecord>(scanData),
+    keys: keysToCamel<ScanDetails["keys"]>(keysData || []),
+  }
 }

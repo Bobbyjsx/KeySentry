@@ -68,6 +68,7 @@ export async function runGitHubScan(
                 link: item.html_url,
                 repository: item.repository.full_name,
                 risk_level: "high",
+                scan_id: scanId,
               }
 
               const { data: insertedKey, error: keyErr } = await supabase

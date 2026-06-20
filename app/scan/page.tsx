@@ -1,5 +1,4 @@
 import Layout from "@/components/Layout"
-import ScanForm from "@/components/scan/ScanForm"
 import ScanHistoryList from "@/components/scan/ScanHistoryList"
 import { getScanHistoryAction } from "@/lib/actions/scan"
 
@@ -9,8 +8,9 @@ export default async function ScanPage() {
   return (
     <Layout>
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-white">New Scan</h1>
-        <ScanForm />
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-white">Scans</h1>
+        </div>
         <ScanHistoryList initialScans={scanHistory} />
       </div>
     </Layout>

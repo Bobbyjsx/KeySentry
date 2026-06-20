@@ -19,6 +19,7 @@ export interface Database {
           is_archived: boolean
           risk_level: string
           notes: string | null
+          scan_id: string | null
         }
         Insert: {
           id?: string
@@ -35,6 +36,7 @@ export interface Database {
           is_archived?: boolean
           risk_level?: string
           notes?: string | null
+          scan_id?: string | null
         }
         Update: {
           id?: string
@@ -51,6 +53,7 @@ export interface Database {
           is_archived?: boolean
           risk_level?: string
           notes?: string | null
+          scan_id?: string | null
         }
       }
       alerts: {

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { startScanAction, getScanHistoryAction, type ScanResult, type ScanHistoryRecord } from "@/lib/actions/scan"
+import { startScanAction, getScanHistoryAction, getScanDetailsAction, type ScanResult, type ScanHistoryRecord, type ScanDetails } from "@/lib/actions/scan"
 import type { ScanSource } from "@/lib/core/scan-manager"
 
 export function useStartScan() {
@@ -24,5 +24,14 @@ export function useGetScanHistory(initialData?: ScanHistoryRecord[]) {
     queryFn: getScanHistoryAction,
     initialData,
     staleTime: 15 * 1000, // 15 seconds stale cache
+  })
+}
+
+export function useGetScanDetails(scanId: string, initialData?: ScanDetails) {
+  return useQuery({
+    queryKey: ["scanDetails", scanId],
+    queryFn: () => getScanDetailsAction(scanId),
+    initialData,
+    staleTime: 30 * 1000, // 30 seconds stale cache
   })
 }

@@ -52,7 +52,7 @@ export default function ScanForm() {
       {
         onSuccess: (data) => {
           toast.success(`Scan completed successfully! Found ${data.keysFound} key(s) in ${data.durationSeconds}s.`)
-          router.push("/discoveries")
+          router.push(`/scan/${data.scanId}`)
         },
         onError: (error: any) => {
           toast.error(error.message || "Failed to complete scan")
