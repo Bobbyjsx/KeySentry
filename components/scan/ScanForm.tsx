@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useToast } from "@/hooks/use-toast"
 import type { Database as SupabaseDatabase } from "@/types/supabase"
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
+import { useSupabase } from "../auth/AuthProvider"
 import { Database, FileText, Github, GitlabIcon as GitlabLogo, Minus, Plus, Search } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -19,8 +19,7 @@ export default function ScanForm() {
   const [sources, setSources] = useState<ScanSource[]>([{ type: "github", value: "" }])
   const [scanDepth, setScanDepth] = useState<"shallow" | "deep">("shallow")
   const router = useRouter()
-  const supabase = useSupabaseClient<SupabaseDatabase>()
-  const user = useUser()
+  const { supabase, user } = useSupabase()
   const { toast } = useToast()
 
   const addSource = () => {

@@ -4,7 +4,7 @@ import React from "react"
 
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
+import { useSupabase } from "../auth/AuthProvider"
 import { Archive, Check, ChevronDown, ChevronUp, Copy, DatabaseIcon, Edit, ExternalLink, Trash2 } from "lucide-react"
 import { useState } from "react"
 
@@ -16,8 +16,7 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const supabase = useSupabaseClient<Database>()
-  const user = useUser()
+  const { supabase, user } = useSupabase()
   const { toast } = useToast()
 
   const handleSort = (field: keyof ApiKey) => {

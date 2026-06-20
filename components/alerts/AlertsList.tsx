@@ -2,7 +2,7 @@
 
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
+import { useSupabase } from "../auth/AuthProvider"
 import { AlertCircle, AlertTriangle, Bell, Clock, ExternalLink, Info } from "lucide-react"
 import { useState } from "react"
 
@@ -10,8 +10,7 @@ type Alert = Database["public"]["Tables"]["alerts"]["Row"]
 
 export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }) {
   const [alerts, setAlerts] = useState<Alert[]>(initialAlerts)
-  const supabase = useSupabaseClient<Database>()
-  const user = useUser()
+  const { supabase, user } = useSupabase()
   const { toast } = useToast()
 
   const markAsRead = async (id: string) => {

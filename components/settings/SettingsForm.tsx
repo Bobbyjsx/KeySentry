@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useToast } from "@/hooks/use-toast"
 import type { Database } from "@/types/supabase"
-import { useSupabaseClient, useUser } from "@supabase/auth-helpers-react"
+import { useSupabase } from "../auth/AuthProvider"
 import { Moon, Save, Settings, Sun } from "lucide-react"
 import { useState } from "react"
 
@@ -21,8 +21,7 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Us
 
   const [settings, setSettings] = useState<Partial<UserSettings>>(initialSettings || defaultSettings)
   const [loading, setLoading] = useState(false)
-  const supabase = useSupabaseClient<Database>()
-  const user = useUser()
+  const { supabase, user } = useSupabase()
   const { toast } = useToast()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
