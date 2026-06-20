@@ -2,11 +2,9 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
 import { PieChartIcon } from "lucide-react"
-import type { Database } from "@/types/supabase"
+import type { ApiKeyDiscovery } from "@/lib/actions/discoveries"
 
-type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"]
-
-export default function ProviderDistribution({ keys }: { keys: ApiKey[] }) {
+export default function ProviderDistribution({ keys }: { keys: ApiKeyDiscovery[] }) {
   // Process data for chart
   const processData = () => {
     const providerCounts: Record<string, number> = {}

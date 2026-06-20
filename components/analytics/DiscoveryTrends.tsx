@@ -3,25 +3,23 @@
 import { useState } from "react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { Calendar } from "lucide-react"
-import type { Database } from "@/types/supabase"
+import type { ScanHistoryAnalytics } from "@/lib/actions/analytics"
 
-type ScanHistory = Database["public"]["Tables"]["scan_history"]["Row"]
-
-export default function DiscoveryTrends({ scanHistory }: { scanHistory: ScanHistory[] }) {
+export default function DiscoveryTrends({ scanHistory }: { scanHistory: ScanHistoryAnalytics[] }) {
   const [timeRange, setTimeRange] = useState<"7days" | "30days" | "90days">("30days")
 
   // Process data for chart
   const processData = () => {
     // Sort by date
     const sortedHistory = [...scanHistory].sort(
-      (a, b) => new Date(a.scan_date).getTime() - new Date(b.scan_date).getTime(),
+      (a, b) => new Date(a.scanDate).getTime() - new Date(b.scanDate).getTime()
     )
 
     // Group by date
     const groupedData: Record<string, { date: string; keys: number; sources: number }> = {}
 
     sortedHistory.forEach((scan) => {
-      const date = new Date(scan.scan_date).toISOString().split("T")[0]
+      const date = new Date(scan.scanDate).toISOString().split("T")[0]
 
       if (!groupedData[date]) {
         groupedData[date] = {
@@ -31,8 +29,8 @@ export default function DiscoveryTrends({ scanHistory }: { scanHistory: ScanHist
         }
       }
 
-      groupedData[date].keys += scan.keys_found
-      groupedData[date].sources += scan.sources_scanned
+      groupedData[date].keys += scan.keysFound
+      groupedData[date].sources += scan.sourcesScanned
     })
 
     // Convert to array

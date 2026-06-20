@@ -1,13 +1,11 @@
 "use client"
 
 import type React from "react"
-
-import { useToast } from "@/hooks/use-toast"
-import type { Database as SupabaseDatabase } from "@/types/supabase"
-import { useSupabase } from "../auth/AuthProvider"
-import { Database, FileText, Github, GitlabIcon as GitlabLogo, Minus, Plus, Search } from "lucide-react"
+import { useStartScan } from "@/hooks/data/useScan/useScan"
+import { Database, FileText, Github, GitlabIcon as GitlabLogo, Minus, Plus, Search, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { toast } from "sonner"
 
 type ScanSource = {
   type: "github" | "gitlab" | "pastebin" | "other"
@@ -15,12 +13,10 @@ type ScanSource = {
 }
 
 export default function ScanForm() {
-  const [loading, setLoading] = useState(false)
   const [sources, setSources] = useState<ScanSource[]>([{ type: "github", value: "" }])
   const [scanDepth, setScanDepth] = useState<"shallow" | "deep">("shallow")
   const router = useRouter()
-  const { supabase, user } = useSupabase()
-  const { toast } = useToast()
+  const startScanMutation = useStartScan()
 
   const addSource = () => {
     setSources([...sources, { type: "github", value: "" }])
@@ -43,83 +39,29 @@ export default function ScanForm() {
   const startScan = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please sign in to start a scan",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validate sources
     const validSources = sources.filter((source) => source.value.trim() !== "")
     if (validSources.length === 0) {
-      toast({
-        title: "No sources specified",
-        description: "Please add at least one source to scan",
-        variant: "destructive",
-      })
+      toast.error("Please add at least one source to scan")
       return
     }
 
-    setLoading(true)
+    toast.info("Your scan has been initiated and is running...")
 
-    try {
-      // Create a new scan record
-      const { data: scanData, error: scanError } = await supabase
-        .from("scan_history")
-        .insert({
-          user_id: user.id,
-          scan_date: new Date().toISOString(),
-          keys_found: 0, // Will be updated when scan completes
-          sources_scanned: validSources.length,
-          duration_seconds: 0, // Will be updated when scan completes
-          status: "in_progress",
-        })
-        .select()
-        .single()
-
-      if (scanError) throw scanError
-
-      toast({
-        title: "Scan started",
-        description: "Your scan has been initiated and is running...",
-        variant: "success",
-      })
-
-      // Send to backend API scan route
-      const res = await fetch("/api/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sources: validSources,
-          scanDepth,
-          scanId: scanData.id,
-        }),
-      })
-
-      if (!res.ok) {
-        throw new Error(await res.text())
+    startScanMutation.mutate(
+      { sources: validSources, scanDepth },
+      {
+        onSuccess: (data) => {
+          toast.success(`Scan completed successfully! Found ${data.keysFound} key(s) in ${data.durationSeconds}s.`)
+          router.push("/discoveries")
+        },
+        onError: (error: any) => {
+          toast.error(error.message || "Failed to complete scan")
+        },
       }
-
-      toast({
-        title: "Scan completed",
-        description: "Your scan has completed successfully",
-        variant: "success",
-      })
-
-      router.push("/discoveries")
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to start scan",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
+    )
   }
+
+  const loading = startScanMutation.isPending
 
   return (
     <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
@@ -234,19 +176,7 @@ export default function ScanForm() {
           >
             {loading ? (
               <>
-                <svg
-                  className="h-4 w-4 animate-spin"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
+                <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Scanning...</span>
               </>
             ) : (

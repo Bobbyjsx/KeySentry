@@ -3,11 +3,9 @@
 import { useState } from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
 import { ShieldAlert } from "lucide-react"
-import type { Database } from "@/types/supabase"
+import type { ApiKeyDiscovery } from "@/lib/actions/discoveries"
 
-type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"]
-
-export default function RiskAssessment({ keys }: { keys: ApiKey[] }) {
+export default function RiskAssessment({ keys }: { keys: ApiKeyDiscovery[] }) {
   const [view, setView] = useState<"provider" | "status">("provider")
 
   // Process data for provider risk chart
@@ -24,7 +22,7 @@ export default function RiskAssessment({ keys }: { keys: ApiKey[] }) {
         }
       }
 
-      providerRisks[key.provider][key.risk_level as "high" | "medium" | "low"]++
+      providerRisks[key.provider][key.riskLevel as "high" | "medium" | "low"]++
     })
 
     return Object.values(providerRisks)
@@ -44,7 +42,7 @@ export default function RiskAssessment({ keys }: { keys: ApiKey[] }) {
         }
       }
 
-      statusRisks[key.status][key.risk_level as "high" | "medium" | "low"]++
+      statusRisks[key.status][key.riskLevel as "high" | "medium" | "low"]++
     })
 
     return Object.values(statusRisks)

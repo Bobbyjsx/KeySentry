@@ -1,36 +1,15 @@
-import { createClient } from "@/lib/supabase/server"
 import Layout from "@/components/Layout"
-import AnalyticsOverview from "@/components/analytics/AnalyticsOverview"
-import DiscoveryTrends from "@/components/analytics/DiscoveryTrends"
-import ProviderDistribution from "@/components/analytics/ProviderDistribution"
-import RiskAssessment from "@/components/analytics/RiskAssessment"
+import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard"
+import { getAnalyticsDataAction } from "@/lib/actions/analytics"
 
 export default async function AnalyticsPage() {
-  const supabase = await createClient()
-
-  // Get API keys data
-  const { data: keys } = await supabase.from("api_keys").select("*")
-
-  // Get scan history data
-  const { data: scanHistory } = await supabase
-    .from("scan_history")
-    .select("*")
-    .order("scan_date", { ascending: false })
-    .limit(30)
+  const initialData = await getAnalyticsDataAction().catch(() => ({ keys: [], scanHistory: [] }))
 
   return (
     <Layout>
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-white">Analytics</h1>
-
-        <AnalyticsOverview keys={keys || []} scanHistory={scanHistory || []} />
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <DiscoveryTrends scanHistory={scanHistory || []} />
-          <ProviderDistribution keys={keys || []} />
-        </div>
-
-        <RiskAssessment keys={keys || []} />
+        <AnalyticsDashboard initialData={initialData} />
       </div>
     </Layout>
   )

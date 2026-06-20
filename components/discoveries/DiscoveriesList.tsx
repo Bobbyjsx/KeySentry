@@ -1,25 +1,29 @@
 "use client"
 
 import React from "react"
-
-import { useToast } from "@/hooks/use-toast"
-import type { Database } from "@/types/supabase"
-import { useSupabase } from "../auth/AuthProvider"
-import { Archive, Check, ChevronDown, ChevronUp, Copy, DatabaseIcon, Edit, ExternalLink, Trash2 } from "lucide-react"
+import { useGetDiscoveries, useArchiveDiscovery, useDeleteDiscovery } from "@/hooks/data/useDiscoveries/useDiscoveries"
+import type { ApiKeyDiscovery } from "@/lib/actions/discoveries"
+import { Archive, Check, ChevronDown, ChevronUp, Copy, DatabaseIcon, Edit, ExternalLink, Trash2, Loader2 } from "lucide-react"
 import { useState } from "react"
+import { toast } from "sonner"
 
-type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"]
+export default function DiscoveriesList({
+  initialKeys,
+  keyId,
+}: {
+  initialKeys: ApiKeyDiscovery[]
+  keyId?: string
+}) {
+  const { data: keys, isLoading } = useGetDiscoveries(keyId, initialKeys)
+  const archiveMutation = useArchiveDiscovery()
+  const deleteMutation = useDeleteDiscovery()
 
-export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[] }) {
-  const [keys, setKeys] = useState<ApiKey[]>(initialKeys)
-  const [sortField, setSortField] = useState<keyof ApiKey>("discovered_at")
+  const [sortField, setSortField] = useState<keyof ApiKeyDiscovery>("discoveredAt")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const { supabase, user } = useSupabase()
-  const { toast } = useToast()
 
-  const handleSort = (field: keyof ApiKey) => {
+  const handleSort = (field: keyof ApiKeyDiscovery) => {
     if (field === sortField) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc")
     } else {
@@ -28,9 +32,9 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
     }
   }
 
-  const sortedKeys = [...keys].sort((a, b) => {
-    const valA = a[sortField] ?? "";
-    const valB = b[sortField] ?? "";
+  const sortedKeys = [...(keys || [])].sort((a, b) => {
+    const valA = a[sortField] ?? ""
+    const valB = b[sortField] ?? ""
     if (valA < valB) return sortDirection === "asc" ? -1 : 1
     if (valA > valB) return sortDirection === "asc" ? 1 : -1
     return 0
@@ -43,67 +47,34 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
     setCopiedId(id)
-
-    toast({
-      title: "Copied to clipboard",
-      description: "API key has been copied to your clipboard",
-      variant: "success",
-    })
-
+    toast.success("API key has been copied to your clipboard")
     setTimeout(() => setCopiedId(null), 2000)
   }
 
   const archiveKey = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from("api_keys")
-        .update({ is_archived: true })
-        .eq("id", id)
-        .eq("user_id", user?.id)
-
-      if (error) throw error
-
-      setKeys(keys.filter((key) => key.id !== id))
-
-      toast({
-        title: "Key archived",
-        description: "API key has been archived",
-        variant: "success",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to archive key",
-        variant: "destructive",
-      })
-    }
+    archiveMutation.mutate(id, {
+      onSuccess: () => {
+        toast.success("API key has been archived")
+      },
+      onError: (error: any) => {
+        toast.error(error.message || "Failed to archive key")
+      },
+    })
   }
 
   const deleteKey = async (id: string) => {
     if (!confirm("Are you sure you want to delete this key? This action cannot be undone.")) return
 
-    try {
-      const { error } = await supabase.from("api_keys").delete().eq("id", id).eq("user_id", user?.id)
-
-      if (error) throw error
-
-      setKeys(keys.filter((key) => key.id !== id))
-
-      toast({
-        title: "Key deleted",
-        description: "API key has been permanently deleted",
-        variant: "success",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete key",
-        variant: "destructive",
-      })
-    }
+    deleteMutation.mutate(id, {
+      onSuccess: () => {
+        toast.success("API key has been permanently deleted")
+      },
+      onError: (error: any) => {
+        toast.error(error.message || "Failed to delete key")
+      },
+    })
   }
 
-  // Function to get provider-specific styles
   const getProviderStyles = (provider: string) => {
     switch (provider) {
       case "OpenAI":
@@ -119,7 +90,6 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
     }
   }
 
-  // Function to get status-specific styles
   const getStatusStyles = (status: string) => {
     switch (status) {
       case "active":
@@ -133,7 +103,15 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
     }
   }
 
-  if (keys.length === 0) {
+  if (isLoading && !keys) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      </div>
+    )
+  }
+
+  if (!keys || keys.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center rounded-lg bg-gray-800 p-8 text-center">
         <div className="mb-4 rounded-full bg-gray-700 p-3">
@@ -151,9 +129,9 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
         <thead className="bg-gray-800">
           <tr>
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">
-              <button className="flex items-center space-x-1 focus:outline-none" onClick={() => handleSort("key_hash")}>
+              <button className="flex items-center space-x-1 focus:outline-none" onClick={() => handleSort("keyHash")}>
                 <span>API Key</span>
-                {sortField === "key_hash" &&
+                {sortField === "keyHash" &&
                   (sortDirection === "asc" ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
               </button>
             </th>
@@ -167,10 +145,10 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">
               <button
                 className="flex items-center space-x-1 focus:outline-none"
-                onClick={() => handleSort("discovered_at")}
+                onClick={() => handleSort("discoveredAt")}
               >
                 <span>Discovered</span>
-                {sortField === "discovered_at" &&
+                {sortField === "discoveredAt" &&
                   (sortDirection === "asc" ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
               </button>
             </th>
@@ -201,14 +179,14 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
                 onClick={() => toggleExpand(item.id)}
               >
                 <td className="whitespace-nowrap px-6 py-4 text-sm font-mono">
-                  <span className="inline-block max-w-xs truncate">{item.key_hash}</span>
+                  <span className="inline-block max-w-xs truncate">{item.keyHash}</span>
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm">
                   <span className={`rounded-full px-2 py-1 text-xs ${getProviderStyles(item.provider)}`}>
                     {item.provider}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-300">{item.discovered_at}</td>
+                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-300">{item.discoveredAt}</td>
                 <td className="whitespace-nowrap px-6 py-4 text-sm">
                   <span className={`rounded-full px-2 py-1 text-xs ${getStatusStyles(item.status)}`}>
                     {item.status}
@@ -220,7 +198,7 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        copyToClipboard(item.key_hash, item.id)
+                        copyToClipboard(item.keyHash, item.id)
                       }}
                       className="text-gray-400 transition-colors hover:text-white"
                       title="Copy API Key"
@@ -244,7 +222,8 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
                         e.stopPropagation()
                         archiveKey(item.id)
                       }}
-                      className="text-gray-400 transition-colors hover:text-white"
+                      disabled={archiveMutation.isPending}
+                      className="text-gray-400 transition-colors hover:text-white disabled:opacity-50"
                       title="Archive Key"
                     >
                       <Archive size={16} />
@@ -260,9 +239,9 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
                         <div>
                           <h4 className="text-sm font-medium text-gray-400">Full API Key</h4>
                           <div className="mt-1 flex items-center justify-between rounded bg-gray-900 p-2 font-mono">
-                            <code className="break-all text-sm">{item.key_hash}</code>
+                            <code className="break-all text-sm">{item.keyHash}</code>
                             <button
-                              onClick={() => copyToClipboard(item.key_hash, `expanded-${item.id}`)}
+                              onClick={() => copyToClipboard(item.keyHash, `expanded-${item.id}`)}
                               className="ml-2 text-gray-400 hover:text-white"
                             >
                               {copiedId === `expanded-${item.id}` ? (
@@ -280,21 +259,21 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
                               <span className="text-gray-500">Risk Level:</span>{" "}
                               <span
                                 className={
-                                  item.risk_level === "high"
+                                  item.riskLevel === "high"
                                     ? "text-red-400"
-                                    : item.risk_level === "medium"
+                                    : item.riskLevel === "medium"
                                       ? "text-yellow-400"
                                       : "text-green-400"
                                 }
                               >
-                                {item.risk_level.charAt(0).toUpperCase() + item.risk_level.slice(1)}
+                                {item.riskLevel.charAt(0).toUpperCase() + item.riskLevel.slice(1)}
                               </span>
                             </p>
                             <p>
                               <span className="text-gray-500">Status:</span> {item.status}
                             </p>
                             <p>
-                              <span className="text-gray-500">First Seen:</span> {item.discovered_at}
+                              <span className="text-gray-500">First Seen:</span> {item.discoveredAt}
                             </p>
                           </div>
                         </div>
@@ -338,8 +317,7 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            // Implement edit functionality
-                            alert("Edit functionality will be implemented here")
+                            toast("Edit feature is coming soon")
                           }}
                           className="flex items-center space-x-1 rounded bg-gray-700 px-3 py-1 text-sm text-gray-300 hover:bg-gray-600"
                         >
@@ -351,7 +329,8 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
                             e.stopPropagation()
                             deleteKey(item.id)
                           }}
-                          className="flex items-center space-x-1 rounded bg-red-900 px-3 py-1 text-sm text-red-300 hover:bg-red-800"
+                          disabled={deleteMutation.isPending}
+                          className="flex items-center space-x-1 rounded bg-red-900 px-3 py-1 text-sm text-red-300 hover:bg-red-800 disabled:opacity-50"
                         >
                           <Trash2 size={14} />
                           <span>Delete</span>

@@ -1,28 +1,31 @@
 "use client"
 
 import type React from "react"
+import { Moon, Save, Settings, Sun, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import { useGetSettings, useSaveSettings } from "@/hooks/data/useSettings/useSettings"
+import type { UserSettings } from "@/lib/actions/settings"
+import { toast } from "sonner"
 
-import { useToast } from "@/hooks/use-toast"
-import type { Database } from "@/types/supabase"
-import { useSupabase } from "../auth/AuthProvider"
-import { Moon, Save, Settings, Sun } from "lucide-react"
-import { useState } from "react"
-
-type UserSettings = Database["public"]["Tables"]["user_settings"]["Row"]
-
-export default function SettingsForm({ initialSettings }: { initialSettings?: UserSettings }) {
-  const defaultSettings: Partial<UserSettings> = {
-    email_alerts: true,
-    slack_webhook: "",
-    github_token: "",
-    scan_frequency: "daily",
+export default function SettingsForm() {
+  const defaultSettings: UserSettings = {
+    emailAlerts: true,
+    slackWebhook: "",
+    githubToken: "",
+    scanFrequency: "daily",
     theme: "dark",
   }
 
-  const [settings, setSettings] = useState<Partial<UserSettings>>(initialSettings || defaultSettings)
-  const [loading, setLoading] = useState(false)
-  const { supabase, user } = useSupabase()
-  const { toast } = useToast()
+  const { data: initialSettings, isLoading } = useGetSettings()
+  const saveMutation = useSaveSettings()
+
+  const [settings, setSettings] = useState<UserSettings>(defaultSettings)
+
+  useEffect(() => {
+    if (initialSettings) {
+      setSettings(initialSettings)
+    }
+  }, [initialSettings])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -37,46 +40,23 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Us
 
   const saveSettings = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
 
-    try {
-      if (!user) throw new Error("User not authenticated")
+    saveMutation.mutate(settings, {
+      onSuccess: () => {
+        toast.success("Settings saved successfully")
+      },
+      onError: (error: any) => {
+        toast.error(error.message || "Failed to save settings")
+      },
+    })
+  }
 
-      const updatedSettings = {
-        ...settings,
-        user_id: user.id,
-        updated_at: new Date().toISOString(),
-      }
-
-      if (initialSettings?.id) {
-        // Update existing settings
-        const { error } = await supabase.from("user_settings").update(updatedSettings).eq("id", initialSettings.id)
-
-        if (error) throw error
-      } else {
-        // Insert new settings
-        const { error } = await supabase.from("user_settings").insert({
-          ...updatedSettings,
-          created_at: new Date().toISOString(),
-        })
-
-        if (error) throw error
-      }
-
-      toast({
-        title: "Settings saved",
-        description: "Your settings have been updated successfully",
-        variant: "success",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save settings",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      </div>
+    )
   }
 
   return (
@@ -126,8 +106,8 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Us
             <div>
               <label className="block text-sm font-medium text-gray-400">Scan Frequency</label>
               <select
-                name="scan_frequency"
-                value={settings.scan_frequency}
+                name="scanFrequency"
+                value={settings.scanFrequency}
                 onChange={handleChange}
                 className="mt-1 block w-full rounded-md border border-gray-600 bg-gray-700 py-2 px-3 text-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
               >
@@ -149,16 +129,16 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Us
             <div className="flex items-start">
               <div className="flex h-5 items-center">
                 <input
-                  id="email_alerts"
-                  name="email_alerts"
+                  id="emailAlerts"
+                  name="emailAlerts"
                   type="checkbox"
-                  checked={settings.email_alerts}
+                  checked={settings.emailAlerts}
                   onChange={handleChange}
                   className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500"
                 />
               </div>
               <div className="ml-3 text-sm">
-                <label htmlFor="email_alerts" className="font-medium text-gray-300">
+                <label htmlFor="emailAlerts" className="font-medium text-gray-300">
                   Email Alerts
                 </label>
                 <p className="text-gray-500">Receive email notifications for new API key discoveries and alerts.</p>
@@ -166,14 +146,14 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Us
             </div>
 
             <div>
-              <label htmlFor="slack_webhook" className="block text-sm font-medium text-gray-400">
+              <label htmlFor="slackWebhook" className="block text-sm font-medium text-gray-400">
                 Slack Webhook URL
               </label>
               <input
                 type="text"
-                name="slack_webhook"
-                id="slack_webhook"
-                value={settings.slack_webhook || ""}
+                name="slackWebhook"
+                id="slackWebhook"
+                value={settings.slackWebhook || ""}
                 onChange={handleChange}
                 placeholder="https://hooks.slack.com/services/..."
                 className="mt-1 block w-full rounded-md border border-gray-600 bg-gray-700 py-2 px-3 text-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
@@ -190,14 +170,14 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Us
           </div>
 
           <div>
-            <label htmlFor="github_token" className="block text-sm font-medium text-gray-400">
+            <label htmlFor="githubToken" className="block text-sm font-medium text-gray-400">
               GitHub Personal Access Token
             </label>
             <input
               type="password"
-              name="github_token"
-              id="github_token"
-              value={settings.github_token || ""}
+              name="githubToken"
+              id="githubToken"
+              value={settings.githubToken || ""}
               onChange={handleChange}
               placeholder="ghp_..."
               className="mt-1 block w-full rounded-md border border-gray-600 bg-gray-700 py-2 px-3 text-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
@@ -210,31 +190,12 @@ export default function SettingsForm({ initialSettings }: { initialSettings?: Us
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={loading}
+              disabled={saveMutation.isPending}
               className="flex items-center space-x-2 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70"
             >
-              {loading ? (
+              {saveMutation.isPending ? (
                 <>
-                  <svg
-                    className="h-4 w-4 animate-spin"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Saving...</span>
                 </>
               ) : (

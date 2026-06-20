@@ -1,29 +1,27 @@
 "use client"
 
 import { BarChart, Database, AlertTriangle, Shield } from "lucide-react"
-import type { Database as DatabaseType } from "@/types/supabase"
-
-type ApiKey = DatabaseType["public"]["Tables"]["api_keys"]["Row"]
-type ScanHistory = DatabaseType["public"]["Tables"]["scan_history"]["Row"]
+import type { ApiKeyDiscovery } from "@/lib/actions/discoveries"
+import type { ScanHistoryAnalytics } from "@/lib/actions/analytics"
 
 export default function AnalyticsOverview({
   keys,
   scanHistory,
 }: {
-  keys: ApiKey[]
-  scanHistory: ScanHistory[]
+  keys: ApiKeyDiscovery[]
+  scanHistory: ScanHistoryAnalytics[]
 }) {
   // Calculate statistics
   const totalKeys = keys.length
   const activeKeys = keys.filter((key) => key.status === "active").length
-  const highRiskKeys = keys.filter((key) => key.risk_level === "high").length
+  const highRiskKeys = keys.filter((key) => key.riskLevel === "high").length
   const providers = new Set(keys.map((key) => key.provider)).size
 
   // Calculate scan statistics
   const totalScans = scanHistory.length
   const successfulScans = scanHistory.filter((scan) => scan.status === "completed").length
   const averageKeysPerScan =
-    totalScans > 0 ? Math.round(scanHistory.reduce((sum, scan) => sum + scan.keys_found, 0) / totalScans) : 0
+    totalScans > 0 ? Math.round(scanHistory.reduce((sum, scan) => sum + scan.keysFound, 0) / totalScans) : 0
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

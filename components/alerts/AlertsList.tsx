@@ -1,38 +1,23 @@
 "use client"
 
-import { useToast } from "@/hooks/use-toast"
-import type { Database } from "@/types/supabase"
-import { useSupabase } from "../auth/AuthProvider"
-import { AlertCircle, AlertTriangle, Bell, Clock, ExternalLink, Info } from "lucide-react"
-import { useState } from "react"
-
-type Alert = Database["public"]["Tables"]["alerts"]["Row"]
+import { useGetAlerts, useMarkAlertAsRead } from "@/hooks/data/useAlerts/useAlerts"
+import type { Alert } from "@/lib/actions/alerts"
+import { AlertCircle, AlertTriangle, Bell, Clock, ExternalLink, Info, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }) {
-  const [alerts, setAlerts] = useState<Alert[]>(initialAlerts)
-  const { supabase, user } = useSupabase()
-  const { toast } = useToast()
+  const { data: alerts, isLoading } = useGetAlerts(initialAlerts)
+  const markAsReadMutation = useMarkAlertAsRead()
 
   const markAsRead = async (id: string) => {
-    try {
-      const { error } = await supabase.from("alerts").update({ is_read: true }).eq("id", id).eq("user_id", user?.id)
-
-      if (error) throw error
-
-      setAlerts(alerts.map((alert) => (alert.id === id ? { ...alert, is_read: true } : alert)))
-
-      toast({
-        title: "Alert updated",
-        description: "Alert marked as read",
-        variant: "success",
-      })
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update alert",
-        variant: "destructive",
-      })
-    }
+    markAsReadMutation.mutate(id, {
+      onSuccess: () => {
+        toast.success("Alert marked as read")
+      },
+      onError: (error: any) => {
+        toast.error(error.message || "Failed to update alert")
+      },
+    })
   }
 
   const getSeverityIcon = (severity: string) => {
@@ -60,7 +45,15 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
     }).format(date)
   }
 
-  if (alerts.length === 0) {
+  if (isLoading && !alerts) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      </div>
+    )
+  }
+
+  if (!alerts || alerts.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center rounded-lg bg-gray-800 p-8 text-center">
         <div className="mb-4 rounded-full bg-gray-700 p-3">
@@ -78,7 +71,7 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
         <div
           key={alert.id}
           className={`rounded-lg border ${
-            alert.is_read ? "border-gray-700 bg-gray-800" : "border-indigo-900 bg-gray-800"
+            alert.isRead ? "border-gray-700 bg-gray-800" : "border-indigo-900 bg-gray-800"
           } p-4 shadow-sm transition-all hover:shadow-md`}
         >
           <div className="flex items-start justify-between">
@@ -90,11 +83,11 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
                 <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
                   <span className="flex items-center">
                     <Clock className="mr-1 h-3 w-3" />
-                    {formatDate(alert.created_at)}
+                    {formatDate(alert.createdAt)}
                   </span>
-                  {alert.api_key_id && (
+                  {alert.apiKeyId && (
                     <a
-                      href={`/discoveries?key=${alert.api_key_id}`}
+                      href={`/discoveries?key=${alert.apiKeyId}`}
                       className="flex items-center text-indigo-400 hover:text-indigo-300"
                     >
                       <ExternalLink className="mr-1 h-3 w-3" />
@@ -104,12 +97,13 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
                 </div>
               </div>
             </div>
-            {!alert.is_read && (
+            {!alert.isRead && (
               <button
                 onClick={() => markAsRead(alert.id)}
-                className="rounded-md bg-gray-700 px-2 py-1 text-xs text-gray-300 hover:bg-gray-600"
+                disabled={markAsReadMutation.isPending}
+                className="rounded-md bg-gray-700 px-2 py-1 text-xs text-gray-300 hover:bg-gray-600 disabled:opacity-50"
               >
-                Mark as read
+                {markAsReadMutation.isPending && markAsReadMutation.variables === alert.id ? "Marking..." : "Mark as read"}
               </button>
             )}
           </div>
