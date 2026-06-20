@@ -132,6 +132,9 @@ export interface Database {
           sources_scanned: number
           duration_seconds: number
           status: string
+          sources: Json | null
+          repos_scanned: number
+          files_scanned: number
         }
         Insert: {
           id?: string
@@ -141,6 +144,9 @@ export interface Database {
           sources_scanned?: number
           duration_seconds?: number
           status?: string
+          sources?: Json | null
+          repos_scanned?: number
+          files_scanned?: number
         }
         Update: {
           id?: string
@@ -150,6 +156,9 @@ export interface Database {
           sources_scanned?: number
           duration_seconds?: number
           status?: string
+          sources?: Json | null
+          repos_scanned?: number
+          files_scanned?: number
         }
       }
     }

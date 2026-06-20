@@ -24,72 +24,72 @@ export default function AnalyticsOverview({
     totalScans > 0 ? Math.round(scanHistory.reduce((sum, scan) => sum + scan.keysFound, 0) / totalScans) : 0
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <div className="rounded-lg border border-gray-700 bg-gradient-to-br from-indigo-900 to-indigo-800 p-4 shadow-lg">
-        <div className="flex justify-between">
-          <div>
-            <p className="text-sm font-medium text-indigo-300">Total Discoveries</p>
-            <p className="text-2xl font-bold text-white">{totalKeys}</p>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 font-sans">
+      <div className="rounded-sm border border-hairline bg-canvas-card p-5">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <p className="font-mono text-caption-mono-sm uppercase text-gray-500 tracking-caption-mono-sm">Total Discoveries</p>
+            <p className="text-3xl font-light text-white tracking-display-sm">{totalKeys}</p>
           </div>
-          <div className="rounded-lg bg-indigo-800 p-2">
-            <Database className="h-6 w-6 text-indigo-300" />
-          </div>
-        </div>
-        <div className="mt-4">
-          <p className="text-xs text-indigo-300">
-            <span className="text-green-400">+{averageKeysPerScan}</span> avg. per scan
-          </p>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-red-700 bg-gradient-to-br from-red-900 to-red-800 p-4 shadow-lg">
-        <div className="flex justify-between">
-          <div>
-            <p className="text-sm font-medium text-red-300">High Risk Keys</p>
-            <p className="text-2xl font-bold text-white">{highRiskKeys}</p>
-          </div>
-          <div className="rounded-lg bg-red-800 p-2">
-            <AlertTriangle className="h-6 w-6 text-red-300" />
+          <div className="rounded-pill border border-hairline p-2 bg-canvas-soft">
+            <Database className="h-4 w-4 text-white" />
           </div>
         </div>
-        <div className="mt-4">
-          <p className="text-xs text-red-300">
-            <span className="text-red-400">{Math.round((highRiskKeys / totalKeys) * 100) || 0}%</span> of total keys
-          </p>
+        <div className="mt-4 border-t border-hairline/50 pt-2 flex items-center justify-between text-xs">
+          <span className="text-gray-500">Average per scan</span>
+          <span className="text-accent-breeze font-mono">+{averageKeysPerScan}</span>
         </div>
       </div>
 
-      <div className="rounded-lg border border-green-700 bg-gradient-to-br from-green-900 to-green-800 p-4 shadow-lg">
-        <div className="flex justify-between">
-          <div>
-            <p className="text-sm font-medium text-green-300">Active Keys</p>
-            <p className="text-2xl font-bold text-white">{activeKeys}</p>
+      <div className="rounded-sm border border-hairline bg-canvas-card p-5">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <p className="font-mono text-caption-mono-sm uppercase text-gray-500 tracking-caption-mono-sm">High Risk Keys</p>
+            <p className="text-3xl font-light text-white tracking-display-sm">{highRiskKeys}</p>
           </div>
-          <div className="rounded-lg bg-green-800 p-2">
-            <Shield className="h-6 w-6 text-green-300" />
+          <div className="rounded-pill border border-hairline p-2 bg-canvas-soft">
+            <AlertTriangle className="h-4 w-4 text-accent-sunset" />
           </div>
         </div>
-        <div className="mt-4">
-          <p className="text-xs text-green-300">
-            <span className="text-green-400">{Math.round((activeKeys / totalKeys) * 100) || 0}%</span> of total keys
-          </p>
+        <div className="mt-4 border-t border-hairline/50 pt-2 flex items-center justify-between text-xs">
+          <span className="text-gray-500">Ratio of total</span>
+          <span className="text-accent-sunset font-mono">
+            {Math.round((highRiskKeys / totalKeys) * 100) || 0}%
+          </span>
         </div>
       </div>
 
-      <div className="rounded-lg border border-purple-700 bg-gradient-to-br from-purple-900 to-purple-800 p-4 shadow-lg">
-        <div className="flex justify-between">
-          <div>
-            <p className="text-sm font-medium text-purple-300">Providers</p>
-            <p className="text-2xl font-bold text-white">{providers}</p>
+      <div className="rounded-sm border border-hairline bg-canvas-card p-5">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <p className="font-mono text-caption-mono-sm uppercase text-gray-500 tracking-caption-mono-sm">Active Keys</p>
+            <p className="text-3xl font-light text-white tracking-display-sm">{activeKeys}</p>
           </div>
-          <div className="rounded-lg bg-purple-800 p-2">
-            <BarChart className="h-6 w-6 text-purple-300" />
+          <div className="rounded-pill border border-hairline p-2 bg-canvas-soft">
+            <Shield className="h-4 w-4 text-white" />
           </div>
         </div>
-        <div className="mt-4">
-          <p className="text-xs text-purple-300">
-            <span className="text-purple-400">{successfulScans}</span> successful scans
-          </p>
+        <div className="mt-4 border-t border-hairline/50 pt-2 flex items-center justify-between text-xs">
+          <span className="text-gray-500">Unrevoked proportion</span>
+          <span className="text-white font-mono">
+            {Math.round((activeKeys / totalKeys) * 100) || 0}%
+          </span>
+        </div>
+      </div>
+
+      <div className="rounded-sm border border-hairline bg-canvas-card p-5">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+            <p className="font-mono text-caption-mono-sm uppercase text-gray-500 tracking-caption-mono-sm">API Providers</p>
+            <p className="text-3xl font-light text-white tracking-display-sm">{providers}</p>
+          </div>
+          <div className="rounded-pill border border-hairline p-2 bg-canvas-soft">
+            <BarChart className="h-4 w-4 text-accent-twilight" />
+          </div>
+        </div>
+        <div className="mt-4 border-t border-hairline/50 pt-2 flex items-center justify-between text-xs">
+          <span className="text-gray-500">Completed scans</span>
+          <span className="text-accent-twilight font-mono">{successfulScans}</span>
         </div>
       </div>
     </div>

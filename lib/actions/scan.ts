@@ -1,8 +1,14 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { keysToCamel } from "@/lib/case-transform"
 import { runGitHubScan, type ScanSource } from "@/lib/core/scan-manager"
+import {
+  createScanHistoryDAL,
+  getScanHistoryDAL,
+  getScanHistoryDetailsDAL,
+  getScanDiscoveriesDAL,
+} from "@/lib/dal/scans"
+import { requireAuth } from "@/lib/auth-server"
 
 export interface ScanResult {
   success: boolean
@@ -15,46 +21,45 @@ export async function startScanAction(
   sources: ScanSource[],
   scanDepth: "shallow" | "deep"
 ): Promise<ScanResult> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, supabase } = await requireAuth()
 
-  if (!user) {
-    throw new Error("Unauthorized")
+  // Create scan history record in_progress via DAL
+  const scanHistoryData = {
+    scan_date: new Date().toISOString(),
+    keys_found: 0,
+    sources_scanned: sources.length,
+    duration_seconds: 0,
+    status: "in_progress",
+    sources: sources as any,
+    repos_scanned: 0,
+    files_scanned: 0,
   }
 
-  // Create scan history record in_progress
-  const { data: scanData, error: scanError } = await supabase
-    .from("scan_history")
-    .insert({
-      user_id: user.id,
-      scan_date: new Date().toISOString(),
-      keys_found: 0,
-      sources_scanned: sources.length,
-      duration_seconds: 0,
-      status: "in_progress",
-    })
-    .select()
-    .single()
+  const scanData = await createScanHistoryDAL(user.id, scanHistoryData)
 
-  if (scanError) throw scanError
-
+  // Invoke the Supabase Edge Function to process the scan asynchronously
   try {
-    const result = await runGitHubScan(user.id, sources, scanData.id)
+    const { error: invokeError } = await supabase.functions.invoke("run-scan", {
+      body: {
+        userId: user.id,
+        sources,
+        scanId: scanData.id,
+      },
+    })
+    if (invokeError) throw invokeError
+  } catch (error) {
+    console.error("Failed to invoke Edge Function, falling back to local background execution:", error)
+    // Fallback: run local background task if Edge Function fails to trigger
+    runGitHubScan(user.id, sources, scanData.id).catch((err: any) => {
+      console.error(`Background fallback scan failed for session ${scanData.id}:`, err)
+    })
+  }
 
-    return {
-      success: true,
-      keysFound: result.keysFound,
-      durationSeconds: result.durationSeconds,
-      scanId: scanData.id,
-    }
-  } catch (error: any) {
-    // Update status to failed
-    await supabase
-      .from("scan_history")
-      .update({ status: "failed" })
-      .eq("id", scanData.id)
-
-    throw error
+  return {
+    success: true,
+    keysFound: 0,
+    durationSeconds: 0,
+    scanId: scanData.id,
   }
 }
 
@@ -66,25 +71,15 @@ export interface ScanHistoryRecord {
   sourcesScanned: number
   durationSeconds: number
   status: string
+  sources?: ScanSource[]
+  reposScanned: number
+  filesScanned: number
 }
 
 export async function getScanHistoryAction(): Promise<ScanHistoryRecord[]> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
-
-  const { data, error } = await supabase
-    .from("scan_history")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("scan_date", { ascending: false })
-
-  if (error) throw error
-
-  return keysToCamel<ScanHistoryRecord[]>(data || [])
+  const { user } = await requireAuth()
+  const data = await getScanHistoryDAL(user.id)
+  return keysToCamel<ScanHistoryRecord[]>(data)
 }
 
 export interface ScanDetails {
@@ -103,29 +98,9 @@ export interface ScanDetails {
 }
 
 export async function getScanDetailsAction(scanId: string): Promise<ScanDetails> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
-
-  const { data: scanData, error: scanError } = await supabase
-    .from("scan_history")
-    .select("*")
-    .eq("id", scanId)
-    .eq("user_id", user.id)
-    .single()
-
-  if (scanError) throw scanError
-
-  const { data: keysData, error: keysError } = await supabase
-    .from("api_keys")
-    .select("*")
-    .eq("scan_id", scanId)
-    .eq("user_id", user.id)
-
-  if (keysError) throw keysError
+  const { user } = await requireAuth()
+  const scanData = await getScanHistoryDetailsDAL(user.id, scanId)
+  const keysData = await getScanDiscoveriesDAL(user.id, scanId)
 
   return {
     scan: keysToCamel<ScanHistoryRecord>(scanData),

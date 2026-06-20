@@ -1,12 +1,20 @@
 import AuthProvider from '@/components/auth/AuthProvider'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as SonnerToaster } from 'sonner'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter'
+})
+
+const geistMono = Geist_Mono({ 
+  subsets: ['latin'],
+  variable: '--font-geist-mono'
+})
 
 export const metadata: Metadata = {
   title: 'KeySentry - Monitor and Detect Exposed API Keys',
@@ -19,8 +27,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="dark">
+      <body className={`${inter.variable} ${geistMono.variable} font-sans bg-canvas text-white antialiased`}>
         <Providers>
           <AuthProvider>
             {children}

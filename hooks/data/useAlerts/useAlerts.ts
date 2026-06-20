@@ -1,26 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { getAlertsAction, markAlertAsReadAction, type Alert } from "@/lib/actions/alerts"
+import { getUnreadAlertsCountAction, getAlertsAction, markAlertAsReadAction, type Alert } from "@/lib/actions/alerts"
+
+export function useGetUnreadAlertsCount() {
+  return useQuery({
+    queryKey: ["unreadAlertsCount"],
+    queryFn: getUnreadAlertsCountAction,
+    refetchInterval: 10000, // Poll every 10 seconds for new alerts/notifications
+  })
+}
 
 export function useGetAlerts(initialData?: Alert[]) {
   return useQuery({
     queryKey: ["alerts"],
-    queryFn: getAlertsAction,
+    queryFn: () => getAlertsAction(),
     initialData,
-    staleTime: 10 * 1000, // 10 seconds stale time
+    staleTime: 15 * 1000,
   })
 }
 
 export function useMarkAlertAsRead() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (id: string) => markAlertAsReadAction(id),
-    onSuccess: (updatedAlert) => {
-      // Optimistically update the cache
-      queryClient.setQueryData<Alert[]>(["alerts"], (oldAlerts) => {
-        if (!oldAlerts) return [updatedAlert]
-        return oldAlerts.map((alert) => (alert.id === updatedAlert.id ? updatedAlert : alert))
-      })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["alerts"] })
+      queryClient.invalidateQueries({ queryKey: ["unreadAlertsCount"] })
     },
   })
 }

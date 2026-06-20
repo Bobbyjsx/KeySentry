@@ -4,6 +4,7 @@ import { useGetAlerts, useMarkAlertAsRead } from "@/hooks/data/useAlerts/useAler
 import type { Alert } from "@/lib/actions/alerts"
 import { AlertCircle, AlertTriangle, Bell, Clock, ExternalLink, Info, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { formatDateTime } from "@/lib/date"
 
 export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }) {
   const { data: alerts, isLoading } = useGetAlerts(initialAlerts)
@@ -23,74 +24,71 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case "critical":
-        return <AlertCircle className="h-5 w-5 text-red-500" />
+        return <AlertCircle className="h-4 w-4 text-accent-sunset" />
       case "high":
-        return <AlertTriangle className="h-5 w-5 text-orange-500" />
+        return <AlertTriangle className="h-4 w-4 text-accent-sunset" />
       case "medium":
-        return <Info className="h-5 w-5 text-yellow-500" />
+        return <Info className="h-4 w-4 text-accent-twilight" />
       case "low":
-        return <Info className="h-5 w-5 text-blue-500" />
+        return <Info className="h-4 w-4 text-accent-breeze" />
       default:
-        return <Info className="h-5 w-5 text-gray-500" />
+        return <Info className="h-4 w-4 text-white" />
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-    }).format(date)
   }
 
   if (isLoading && !alerts) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      <div className="flex h-64 items-center justify-center rounded-sm border border-hairline bg-canvas-card p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     )
   }
 
   if (!alerts || alerts.length === 0) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center rounded-lg bg-gray-800 p-8 text-center">
-        <div className="mb-4 rounded-full bg-gray-700 p-3">
-          <Bell className="h-8 w-8 text-gray-400" />
+      <div className="flex h-64 flex-col items-center justify-center rounded-sm border border-hairline bg-canvas-card p-8 text-center">
+        <div className="mb-4 rounded-pill border border-hairline bg-canvas-soft p-3">
+          <Bell className="h-6 w-6 text-white" />
         </div>
-        <h3 className="mb-2 text-xl font-medium text-white">No alerts</h3>
-        <p className="text-gray-400">You don't have any alerts at the moment.</p>
+        <h3 className="mb-1 font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">No alerts</h3>
+        <p className="text-sm text-gray-400">You don't have any alerts at the moment.</p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 font-sans">
       {alerts.map((alert) => (
         <div
           key={alert.id}
-          className={`rounded-lg border ${
-            alert.isRead ? "border-gray-700 bg-gray-800" : "border-indigo-900 bg-gray-800"
-          } p-4 shadow-sm transition-all hover:shadow-md`}
+          className={`rounded-sm border ${
+            alert.isRead ? "border-hairline bg-canvas-card opacity-60" : "border-white/20 bg-canvas-card"
+          } p-5 transition-colors`}
         >
-          <div className="flex items-start justify-between">
-            <div className="flex items-start space-x-3">
-              {getSeverityIcon(alert.severity)}
-              <div>
-                <h3 className="font-medium text-white">{alert.title}</h3>
-                <p className="mt-1 text-sm text-gray-400">{alert.description}</p>
-                <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+          <div className="flex items-start justify-between flex-col sm:flex-row gap-4">
+            <div className="flex items-start space-x-3.5">
+              <div className="rounded-pill border border-hairline bg-canvas-soft p-2 mt-0.5">
+                {getSeverityIcon(alert.severity)}
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <h3 className="text-sm font-normal text-white">{alert.title}</h3>
+                  {!alert.isRead && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent-sunset" title="Unread" />
+                  )}
+                </div>
+                <p className="text-sm text-gray-400 leading-relaxed">{alert.description}</p>
+                <div className="mt-3 flex items-center space-x-4 text-xs text-gray-500 font-mono">
                   <span className="flex items-center">
-                    <Clock className="mr-1 h-3 w-3" />
-                    {formatDate(alert.createdAt)}
+                    <Clock className="mr-1.5 h-3.5 w-3.5" />
+                    {formatDateTime(alert.createdAt)}
                   </span>
                   {alert.apiKeyId && (
                     <a
                       href={`/discoveries?key=${alert.apiKeyId}`}
-                      className="flex items-center text-indigo-400 hover:text-indigo-300"
+                      className="flex items-center text-white hover:text-gray-300 transition-colors uppercase tracking-wider text-[10px]"
                     >
-                      <ExternalLink className="mr-1 h-3 w-3" />
+                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                       View Key
                     </a>
                   )}
@@ -101,9 +99,13 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
               <button
                 onClick={() => markAsRead(alert.id)}
                 disabled={markAsReadMutation.isPending}
-                className="rounded-md bg-gray-700 px-2 py-1 text-xs text-gray-300 hover:bg-gray-600 disabled:opacity-50"
+                className="w-full sm:w-auto self-end sm:self-start rounded-pill border border-hairline bg-canvas px-4 py-1.5 font-mono text-[10px] uppercase text-gray-400 hover:text-white hover:border-white transition-colors disabled:opacity-50"
               >
-                {markAsReadMutation.isPending && markAsReadMutation.variables === alert.id ? "Marking..." : "Mark as read"}
+                {markAsReadMutation.isPending && markAsReadMutation.variables === alert.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin mx-auto" />
+                ) : (
+                  "Mark as read"
+                )}
               </button>
             )}
           </div>

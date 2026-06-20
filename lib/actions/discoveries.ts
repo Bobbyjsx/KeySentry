@@ -1,7 +1,8 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
-import { keysToCamel, keysToSnake } from "@/lib/case-transform"
+import { keysToCamel } from "@/lib/case-transform"
+import { getDiscoveriesDAL, archiveDiscoveryDAL, deleteDiscoveryDAL } from "@/lib/dal/discoveries"
+import { requireAuth } from "@/lib/auth-server"
 
 export interface ApiKeyDiscovery {
   id: string
@@ -19,64 +20,18 @@ export interface ApiKeyDiscovery {
 }
 
 export async function getDiscoveriesAction(keyId?: string): Promise<ApiKeyDiscovery[]> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
-
-  let query = supabase
-    .from("api_keys")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("is_archived", false)
-    .order("discovered_at", { ascending: false })
-
-  if (keyId) {
-    query = query.eq("id", keyId)
-  }
-
-  const { data, error } = await query
-  if (error) throw error
-
-  return keysToCamel<ApiKeyDiscovery[]>(data || [])
+  const { user } = await requireAuth()
+  const data = await getDiscoveriesDAL(user.id, keyId)
+  return keysToCamel<ApiKeyDiscovery[]>(data)
 }
 
 export async function archiveDiscoveryAction(id: string): Promise<ApiKeyDiscovery> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
-
-  const { data, error } = await supabase
-    .from("api_keys")
-    .update({ is_archived: true })
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .select()
-    .single()
-
-  if (error) throw error
-
+  const { user } = await requireAuth()
+  const data = await archiveDiscoveryDAL(user.id, id)
   return keysToCamel<ApiKeyDiscovery>(data)
 }
 
 export async function deleteDiscoveryAction(id: string): Promise<void> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
-
-  const { error } = await supabase
-    .from("api_keys")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id)
-
-  if (error) throw error
+  const { user } = await requireAuth()
+  await deleteDiscoveryDAL(user.id, id)
 }

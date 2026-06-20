@@ -39,7 +39,13 @@ export default function ScanForm() {
   const startScan = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const validSources = sources.filter((source) => source.value.trim() !== "")
+    const validSources = sources
+      .map((source) => ({
+        type: source.type,
+        value: source.value.replace(/\s+/g, ""), // Strip all whitespaces
+      }))
+      .filter((source) => source.value !== "")
+
     if (validSources.length === 0) {
       toast.error("Please add at least one source to scan")
       return
@@ -51,11 +57,18 @@ export default function ScanForm() {
       { sources: validSources, scanDepth },
       {
         onSuccess: (data) => {
-          toast.success(`Scan completed successfully! Found ${data.keysFound} key(s) in ${data.durationSeconds}s.`)
-          router.push(`/scan/${data.scanId}`)
+          toast.success("Scan initiated in the background! Redirecting to details...")
+          const scanUrl = `/scan/${data.scanId}`
+          router.push(scanUrl)
+          // Fallback redirect
+          setTimeout(() => {
+            if (window.location.pathname !== scanUrl) {
+              window.location.href = scanUrl
+            }
+          }, 500)
         },
         onError: (error: any) => {
-          toast.error(error.message || "Failed to complete scan")
+          toast.error(error.message || "Failed to start scan")
         },
       }
     )

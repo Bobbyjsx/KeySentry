@@ -1,8 +1,10 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { keysToCamel } from "@/lib/case-transform"
 import type { ApiKeyDiscovery } from "./discoveries"
+import { getAllDiscoveriesDAL } from "@/lib/dal/discoveries"
+import { getRecentScanHistoryDAL } from "@/lib/dal/scans"
+import { requireAuth } from "@/lib/auth-server"
 
 export interface ScanHistoryAnalytics {
   id: string
@@ -20,30 +22,13 @@ export interface AnalyticsData {
 }
 
 export async function getAnalyticsDataAction(): Promise<AnalyticsData> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await requireAuth()
 
-  if (!user) {
-    throw new Error("Unauthorized")
-  }
+  // Get API keys data via DAL
+  const keysData = await getAllDiscoveriesDAL(user.id)
 
-  // Get API keys data
-  const { data: keysData, error: keysErr } = await supabase
-    .from("api_keys")
-    .select("*")
-    .eq("user_id", user.id)
-
-  if (keysErr) throw keysErr
-
-  // Get scan history data
-  const { data: scanHistoryData, error: scanErr } = await supabase
-    .from("scan_history")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("scan_date", { ascending: false })
-    .limit(30)
-
-  if (scanErr) throw scanErr
+  // Get scan history data via DAL (last 30 scans)
+  const scanHistoryData = await getRecentScanHistoryDAL(user.id, 30)
 
   return {
     keys: keysToCamel<ApiKeyDiscovery[]>(keysData || []),

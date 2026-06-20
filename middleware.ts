@@ -64,7 +64,7 @@ export async function middleware(request: NextRequest) {
   const protectedRoutes = ['/settings', '/api-keys', '/scan', '/discoveries', '/alerts', '/analytics']
   const isProtectedRoute = protectedRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
-  ) || request.nextUrl.pathname === '/'
+  )
 
   // Redirect if accessing protected route without auth
   if (isProtectedRoute && !session) {

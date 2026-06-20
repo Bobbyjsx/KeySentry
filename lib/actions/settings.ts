@@ -1,7 +1,10 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
 import { keysToCamel, keysToSnake } from "@/lib/case-transform"
+import { encrypt, decrypt } from "@/lib/crypto"
+import { getSettingsDAL, insertSettingsDAL, updateSettingsDAL } from "@/lib/dal/settings"
+import { requireAuth } from "@/lib/auth-server"
+import { z } from "zod"
 
 export interface UserSettings {
   id?: string
@@ -15,65 +18,68 @@ export interface UserSettings {
   updatedAt?: string
 }
 
+const SettingsSchema = z.object({
+  id: z.string().optional(),
+  userId: z.string().optional(),
+  emailAlerts: z.boolean().optional(),
+  slackWebhook: z.string().url("Must be a valid URL").or(z.literal("")).nullable().optional(),
+  githubToken: z.string().nullable().optional(),
+  scanFrequency: z.enum(["hourly", "daily", "weekly", "monthly", "manual"]).optional(),
+  theme: z.enum(["light", "dark", "system"]).optional(),
+})
+
 export async function getSettings(): Promise<UserSettings | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await requireAuth()
 
-  if (!user) {
-    throw new Error("Unauthorized")
+  const data = await getSettingsDAL(user.id)
+  if (!data) {
+    return null
   }
 
-  const { data, error } = await supabase
-    .from("user_settings")
-    .select("*")
-    .eq("user_id", user.id)
-    .single()
-
-  if (error) {
-    if (error.code === "PGRST116") {
-      return null
-    }
-    throw error
+  const settings = keysToCamel<UserSettings>(data)
+  if (settings.githubToken) {
+    settings.githubToken = decrypt(settings.githubToken)
   }
-
-  return keysToCamel<UserSettings>(data)
+  return settings
 }
 
 export async function saveSettingsAction(settings: Partial<UserSettings>): Promise<UserSettings> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await requireAuth()
 
-  if (!user) {
-    throw new Error("Unauthorized")
+  // Enforce schema validation
+  const validatedSettings = SettingsSchema.parse(settings)
+
+  // Normalize empty strings to null
+  if (validatedSettings.slackWebhook === "") {
+    validatedSettings.slackWebhook = null
   }
 
   const dbData = keysToSnake({
-    ...settings,
+    ...validatedSettings,
     userId: user.id,
     updatedAt: new Date().toISOString(),
   })
 
+  if (dbData.github_token) {
+    dbData.github_token = encrypt(dbData.github_token)
+  }
+
   if (dbData.id) {
-    const { data, error } = await supabase
-      .from("user_settings")
-      .update(dbData)
-      .eq("id", dbData.id)
-      .select()
-      .single()
-
-    if (error) throw error
-    return keysToCamel<UserSettings>(data)
+    const data = await updateSettingsDAL(user.id, dbData.id, dbData)
+    const res = keysToCamel<UserSettings>(data)
+    if (res.githubToken) {
+      res.githubToken = decrypt(res.githubToken)
+    }
+    return res
   } else {
-    const { data, error } = await supabase
-      .from("user_settings")
-      .insert({
-        ...dbData,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
-
-    if (error) throw error
-    return keysToCamel<UserSettings>(data)
+    const data = await insertSettingsDAL(user.id, {
+      ...dbData,
+      created_at: new Date().toISOString(),
+    })
+    const res = keysToCamel<UserSettings>(data)
+    if (res.githubToken) {
+      res.githubToken = decrypt(res.githubToken)
+    }
+    return res
   }
 }

@@ -1,14 +1,17 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useSupabase } from './AuthProvider'
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useSupabase } from "./AuthProvider"
+import { Shield, Eye, EyeOff, Loader2 } from "lucide-react"
 
 export default function ResetPasswordForm() {
   const { supabase } = useSupabase()
   const router = useRouter()
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -17,9 +20,8 @@ export default function ResetPasswordForm() {
     setIsLoading(true)
     setError(null)
 
-    // Validate passwords match
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError("Passwords do not match")
       setIsLoading(false)
       return
     }
@@ -32,10 +34,9 @@ export default function ResetPasswordForm() {
         return
       }
 
-      // Redirect to login page after successful password reset
-      router.push('/auth/login?reset=success')
+      router.push("/auth/login?reset=success")
     } catch (err) {
-      setError('An unexpected error occurred')
+      setError("An unexpected error occurred")
       console.error(err)
     } finally {
       setIsLoading(false)
@@ -43,58 +44,98 @@ export default function ResetPasswordForm() {
   }
 
   return (
-    <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md dark:bg-gray-800">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Set new password</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Enter your new password below
+    <div className="w-full max-w-md p-8 bg-canvas-card border border-hairline rounded-sm space-y-8 font-sans relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute -right-24 -top-24 h-40 w-40 rounded-full bg-accent-sunset/10 blur-3xl pointer-events-none" />
+
+      <div className="text-center space-y-2">
+        <div className="flex justify-center mb-4">
+          <div className="rounded-pill border border-hairline bg-canvas-soft p-3">
+            <Shield className="h-6 w-6 text-white" />
+          </div>
+        </div>
+        <span className="block text-caption-mono-sm font-mono uppercase text-gray-500">
+          Account Security
+        </span>
+        <h1 className="text-display-xs font-normal text-white tracking-display-sm">
+          Set New Password
+        </h1>
+        <p className="text-xs text-gray-400 max-w-xs mx-auto">
+          Enter and verify your new account password below.
         </p>
       </div>
 
-      <form onSubmit={handleResetPassword} className="mt-8 space-y-6">
+      <form onSubmit={handleResetPassword} className="space-y-6">
         {error && (
-          <div className="p-3 text-sm text-red-600 bg-red-100 rounded-md dark:bg-red-900/30 dark:text-red-400">
+          <div className="p-3.5 text-caption-mono-sm font-mono uppercase text-red-400 border border-red-500/20 bg-canvas-soft">
             {error}
           </div>
         )}
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="space-y-2">
+          <label htmlFor="password" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
             New Password
           </label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600"
-          />
+          <div className="relative">
+            <input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="block w-full pl-3.5 pr-10 py-2.5 rounded-sm border border-hairline bg-canvas-soft text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </div>
 
-        <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="space-y-2">
+          <label htmlFor="confirmPassword" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
             Confirm New Password
           </label>
-          <input
-            id="confirmPassword"
-            name="confirmPassword"
-            type="password"
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600"
-          />
+          <div className="relative">
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              className="block w-full pl-3.5 pr-10 py-2.5 rounded-sm border border-hairline bg-canvas-soft text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
+            >
+              {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
         </div>
 
-        <div>
+        <div className="pt-2">
           <button
             type="submit"
             disabled={isLoading}
-            className="flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex justify-center items-center space-x-2 w-full rounded-pill border border-white bg-white px-5 py-2.5 font-mono text-xs uppercase text-canvas hover:bg-canvas hover:text-white transition-colors disabled:opacity-50"
           >
-            {isLoading ? 'Updating password...' : 'Update password'}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Updating password...</span>
+              </>
+            ) : (
+              <span>Update Password</span>
+            )}
           </button>
         </div>
       </form>

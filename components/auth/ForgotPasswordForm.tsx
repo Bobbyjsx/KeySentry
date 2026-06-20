@@ -1,12 +1,13 @@
-'use client'
+"use client"
 
-import Link from 'next/link'
-import { useState } from 'react'
-import { useSupabase } from './AuthProvider'
+import Link from "next/link"
+import { useState } from "react"
+import { useSupabase } from "./AuthProvider"
+import { Shield, Key, Loader2, Sparkles } from "lucide-react"
 
 export default function ForgotPasswordForm() {
   const { supabase } = useSupabase()
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -27,9 +28,9 @@ export default function ForgotPasswordForm() {
         return
       }
 
-      setMessage('Check your email for the password reset link')
+      setMessage("Check your email for the password reset link")
     } catch (err) {
-      setError('An unexpected error occurred')
+      setError("An unexpected error occurred")
       console.error(err)
     } finally {
       setIsLoading(false)
@@ -37,30 +38,44 @@ export default function ForgotPasswordForm() {
   }
 
   return (
-    <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md dark:bg-gray-800">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">Reset your password</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          We'll send you an email with a link to reset your password
+    <div className="w-full max-w-md p-8 bg-canvas-card border border-hairline rounded-sm space-y-8 font-sans relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute -right-24 -top-24 h-40 w-40 rounded-full bg-accent-sunset/10 blur-3xl pointer-events-none" />
+
+      <div className="text-center space-y-2">
+        <div className="flex justify-center mb-4">
+          <div className="rounded-pill border border-hairline bg-canvas-soft p-3">
+            <Key className="h-6 w-6 text-white" />
+          </div>
+        </div>
+        <span className="block text-caption-mono-sm font-mono uppercase text-gray-500">
+          Password Recovery
+        </span>
+        <h1 className="text-display-xs font-normal text-white tracking-display-sm">
+          Reset Your Password
+        </h1>
+        <p className="text-xs text-gray-400 max-w-xs mx-auto">
+          We'll send you an email with a secure link to reset your account password.
         </p>
       </div>
 
-      <form onSubmit={handleResetPassword} className="mt-8 space-y-6">
+      <form onSubmit={handleResetPassword} className="space-y-6">
         {error && (
-          <div className="p-3 text-sm text-red-600 bg-red-100 rounded-md dark:bg-red-900/30 dark:text-red-400">
+          <div className="p-3.5 text-caption-mono-sm font-mono uppercase text-red-400 border border-red-500/20 bg-canvas-soft">
             {error}
           </div>
         )}
 
         {message && (
-          <div className="p-3 text-sm text-green-600 bg-green-100 rounded-md dark:bg-green-900/30 dark:text-green-400">
-            {message}
+          <div className="p-3.5 text-caption-mono-sm font-mono uppercase text-accent-breeze border border-accent-breeze/20 bg-canvas-soft flex items-start space-x-2">
+            <Sparkles className="h-4 w-4 mt-0.5 flex-shrink-0" />
+            <span>{message}</span>
           </div>
         )}
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Email address
+        <div className="space-y-2">
+          <label htmlFor="email" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
+            Email Address
           </label>
           <input
             id="email"
@@ -69,26 +84,34 @@ export default function ForgotPasswordForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600"
+            placeholder="name@domain.com"
+            className="block w-full px-3.5 py-2.5 rounded-sm border border-hairline bg-canvas-soft text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
           />
         </div>
 
-        <div>
+        <div className="pt-2">
           <button
             type="submit"
             disabled={isLoading}
-            className="flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex justify-center items-center space-x-2 w-full rounded-pill border border-white bg-white px-5 py-2.5 font-mono text-xs uppercase text-canvas hover:bg-canvas hover:text-white transition-colors disabled:opacity-50"
           >
-            {isLoading ? 'Sending reset link...' : 'Send reset link'}
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Sending link...</span>
+              </>
+            ) : (
+              <span>Send Reset Link</span>
+            )}
           </button>
         </div>
       </form>
 
-      <div className="text-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Remember your password?{' '}
-          <Link href="/auth/login" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-            Sign in
+      <div className="text-center pt-2">
+        <p className="text-xs text-gray-500">
+          Remember your password?{" "}
+          <Link href="/auth/login" className="text-caption-mono-sm font-mono uppercase text-gray-400 hover:text-white transition-colors underline pl-1">
+            Sign In
           </Link>
         </p>
       </div>
