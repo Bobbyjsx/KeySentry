@@ -55,3 +55,32 @@ export async function startScanAction(
     throw error
   }
 }
+
+export interface ScanHistoryRecord {
+  id: string
+  userId: string
+  scanDate: string
+  keysFound: number
+  sourcesScanned: number
+  durationSeconds: number
+  status: string
+}
+
+export async function getScanHistoryAction(): Promise<ScanHistoryRecord[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error("Unauthorized")
+  }
+
+  const { data, error } = await supabase
+    .from("scan_history")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("scan_date", { ascending: false })
+
+  if (error) throw error
+
+  return keysToCamel<ScanHistoryRecord[]>(data || [])
+}
