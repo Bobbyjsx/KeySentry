@@ -72,3 +72,12 @@ The authentication system follows a modern Next.js App Router approach with Supa
 - Protected routes with middleware
 - Service role key used only on the server
 - Email verification for new accounts
+
+# Agent Supabase Local Credentials
+
+Email: agent@keysentry.ai
+Password: SuperSecureAgentPassword123!
+User ID: d0a86337-77f9-451e-aa1b-ab1cc7f9e619
+Date Created: 2026-06-20
+Supabase API URL: http://127.0.0.1:54321
+Supabase Anon Key: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH

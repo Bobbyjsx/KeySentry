@@ -79,28 +79,38 @@ export default function ScanForm() {
           status: "in_progress",
         })
         .select()
+        .single()
 
       if (scanError) throw scanError
 
-      // In a real application, you would trigger a background job here
-      // For now, we'll simulate a scan with a timeout
-
-      setTimeout(() => {
-        // Simulate scan completion
-        toast({
-          title: "Scan completed",
-          description: "Your scan has completed successfully",
-          variant: "success",
-        })
-
-        router.push("/discoveries")
-      }, 3000)
-
       toast({
         title: "Scan started",
-        description: "Your scan has been initiated and will run in the background",
+        description: "Your scan has been initiated and is running...",
         variant: "success",
       })
+
+      // Send to backend API scan route
+      const res = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sources: validSources,
+          scanDepth,
+          scanId: scanData.id,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error(await res.text())
+      }
+
+      toast({
+        title: "Scan completed",
+        description: "Your scan has completed successfully",
+        variant: "success",
+      })
+
+      router.push("/discoveries")
     } catch (error: any) {
       toast({
         title: "Error",
