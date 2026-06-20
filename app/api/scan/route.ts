@@ -6,8 +6,7 @@ import { Octokit } from "@octokit/rest"
 const openAiKeyRegex = /sk-[a-zA-Z0-9]{48}/
 
 export async function POST(request: Request) {
-  const cookieStore = cookies()
-  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+  const supabase = createRouteHandlerClient({ cookies })
 
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {

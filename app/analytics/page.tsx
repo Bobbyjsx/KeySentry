@@ -8,8 +8,7 @@ import RiskAssessment from "@/components/analytics/RiskAssessment"
 import type { Database } from "@/types/supabase"
 
 export default async function AnalyticsPage() {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient<Database>({ cookies: () => cookieStore })
+  const supabase = createServerComponentClient<Database>({ cookies })
 
   // Get API keys data
   const { data: keys } = await supabase.from("api_keys").select("*")

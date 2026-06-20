@@ -5,8 +5,7 @@ import { cookies } from "next/headers"
 import type { Database } from "@/types/supabase"
 
 export default async function SettingsPage() {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient<Database>({ cookies: () => cookieStore })
+  const supabase = createServerComponentClient<Database>({ cookies })
 
   const { data: settings } = await supabase.from("user_settings").select("*").single()
 

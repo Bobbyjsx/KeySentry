@@ -5,8 +5,7 @@ import AlertsList from "@/components/alerts/AlertsList"
 import AlertsHeader from "@/components/alerts/AlertsHeader"
 
 export default async function AlertsPage() {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const supabase = createServerComponentClient({ cookies })
 
   const { data: alerts } = await supabase.from("alerts").select("*").order("created_at", { ascending: false })
 

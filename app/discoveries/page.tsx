@@ -5,8 +5,7 @@ import DiscoveriesHeader from "@/components/discoveries/DiscoveriesHeader"
 import DiscoveriesList from "@/components/discoveries/DiscoveriesList"
 
 export default async function DiscoveriesPage({ searchParams }: { searchParams: { key?: string } }) {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const supabase = createServerComponentClient({ cookies })
 
   let query = supabase.from("api_keys").select("*").order("discovered_at", { ascending: false })
 

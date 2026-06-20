@@ -30,8 +30,10 @@ export default function DiscoveriesList({ initialKeys }: { initialKeys: ApiKey[]
   }
 
   const sortedKeys = [...keys].sort((a, b) => {
-    if (a[sortField] < b[sortField]) return sortDirection === "asc" ? -1 : 1
-    if (a[sortField] > b[sortField]) return sortDirection === "asc" ? 1 : -1
+    const valA = a[sortField] ?? "";
+    const valB = b[sortField] ?? "";
+    if (valA < valB) return sortDirection === "asc" ? -1 : 1
+    if (valA > valB) return sortDirection === "asc" ? 1 : -1
     return 0
   })
 
