@@ -1,14 +1,12 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server"
 import Layout from "@/components/Layout"
 import AnalyticsOverview from "@/components/analytics/AnalyticsOverview"
 import DiscoveryTrends from "@/components/analytics/DiscoveryTrends"
 import ProviderDistribution from "@/components/analytics/ProviderDistribution"
 import RiskAssessment from "@/components/analytics/RiskAssessment"
-import type { Database } from "@/types/supabase"
 
 export default async function AnalyticsPage() {
-  const supabase = createServerComponentClient<Database>({ cookies })
+  const supabase = await createClient()
 
   // Get API keys data
   const { data: keys } = await supabase.from("api_keys").select("*")

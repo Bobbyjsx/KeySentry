@@ -1,11 +1,10 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server"
 import Layout from "@/components/Layout"
 import AlertsList from "@/components/alerts/AlertsList"
 import AlertsHeader from "@/components/alerts/AlertsHeader"
 
 export default async function AlertsPage() {
-  const supabase = createServerComponentClient({ cookies })
+  const supabase = await createClient()
 
   const { data: alerts } = await supabase.from("alerts").select("*").order("created_at", { ascending: false })
 

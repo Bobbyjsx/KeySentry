@@ -1,11 +1,9 @@
 import Layout from "@/components/Layout"
 import SettingsForm from "@/components/settings/SettingsForm"
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import type { Database } from "@/types/supabase"
+import { createClient } from "@/lib/supabase/server"
 
 export default async function SettingsPage() {
-  const supabase = createServerComponentClient<Database>({ cookies })
+  const supabase = await createClient()
 
   const { data: settings } = await supabase.from("user_settings").select("*").single()
 
