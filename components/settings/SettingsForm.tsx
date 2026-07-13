@@ -57,6 +57,34 @@ export default function SettingsForm() {
   const saveSettings = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Client-side validation: Slack webhook URL format (if provided)
+    if (settings.slackWebhook) {
+      const webhook = settings.slackWebhook.trim()
+      if (webhook !== "") {
+        try {
+          const url = new URL(webhook)
+          if (url.protocol !== "http:" && url.protocol !== "https:") {
+            toast.error("Slack Webhook URL must start with http:// or https://")
+            return
+          }
+        } catch (err) {
+          toast.error("Slack Webhook must be a valid URL")
+          return
+        }
+      }
+    }
+
+    // Client-side validation: GitHub token prefix (if provided)
+    if (settings.githubToken) {
+      const token = settings.githubToken.trim()
+      if (token !== "") {
+        if (!token.startsWith("ghp_") && !token.startsWith("github_pat_")) {
+          toast.error("GitHub Token must start with 'ghp_' (classic) or 'github_pat_' (fine-grained)")
+          return
+        }
+      }
+    }
+
     saveMutation.mutate(settings, {
       onSuccess: () => {
         toast.success("Settings saved successfully")

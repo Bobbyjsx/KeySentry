@@ -135,6 +135,8 @@ export interface Database {
           sources: Json | null
           repos_scanned: number
           files_scanned: number
+          trigger: string
+          trigger_link: string | null
         }
         Insert: {
           id?: string
@@ -147,6 +149,8 @@ export interface Database {
           sources?: Json | null
           repos_scanned?: number
           files_scanned?: number
+          trigger?: string
+          trigger_link?: string | null
         }
         Update: {
           id?: string
@@ -159,6 +163,8 @@ export interface Database {
           sources?: Json | null
           repos_scanned?: number
           files_scanned?: number
+          trigger?: string
+          trigger_link?: string | null
         }
       }
     }

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSupabase } from "./AuthProvider"
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 export default function ResetPasswordForm() {
   const { supabase } = useSupabase()
@@ -22,6 +23,7 @@ export default function ResetPasswordForm() {
 
     if (password !== confirmPassword) {
       setError("Passwords do not match")
+      toast.error("Passwords do not match")
       setIsLoading(false)
       return
     }
@@ -31,12 +33,15 @@ export default function ResetPasswordForm() {
 
       if (error) {
         setError(error.message)
+        toast.error(error.message)
         return
       }
 
+      toast.success("Password updated successfully!")
       router.push("/auth/login?reset=success")
     } catch (err) {
       setError("An unexpected error occurred")
+      toast.error("An unexpected error occurred")
       console.error(err)
     } finally {
       setIsLoading(false)

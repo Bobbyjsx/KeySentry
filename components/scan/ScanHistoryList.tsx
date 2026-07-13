@@ -2,7 +2,7 @@
 
 import { useGetScanHistory } from "@/hooks/data/useScan/useScan"
 import type { ScanHistoryRecord } from "@/lib/actions/scan"
-import { Clock, Database, Shield, ShieldAlert, Loader2, Plus, Eye } from "lucide-react"
+import { Clock, Database, Shield, ShieldAlert, Loader2, Plus, Eye, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { formatDateTime, formatDuration } from "@/lib/date"
@@ -117,6 +117,7 @@ export default function ScanHistoryList({ initialScans }: { initialScans: ScanHi
           <TableRow className="border-hairline hover:bg-transparent">
             <TableHead className="font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">Scan Date & Time</TableHead>
             <TableHead className="font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">Status</TableHead>
+            <TableHead className="font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">Trigger</TableHead>
             <TableHead className="font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">Sources</TableHead>
             <TableHead className="font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">Repos Scanned</TableHead>
             <TableHead className="font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">Files Scanned</TableHead>
@@ -133,6 +134,23 @@ export default function ScanHistoryList({ initialScans }: { initialScans: ScanHi
               </TableCell>
               <TableCell>
                 {getStatusBadge(scan.status)}
+              </TableCell>
+              <TableCell className="text-xs text-gray-300">
+                {scan.triggerLink ? (
+                  <a
+                    href={scan.triggerLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-1 hover:text-white underline decoration-gray-600 hover:decoration-white transition-all font-mono text-[11px] uppercase tracking-wider"
+                  >
+                    <span>{scan.trigger}</span>
+                    <ExternalLink className="h-3 w-3 text-gray-500" />
+                  </a>
+                ) : (
+                  <span className="font-mono text-[11px] uppercase text-gray-400 tracking-wider">
+                    {scan.trigger || "manual"}
+                  </span>
+                )}
               </TableCell>
               <TableCell className="text-xs text-gray-300">
                 <div className="flex items-center space-x-1.5">

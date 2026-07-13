@@ -43,43 +43,63 @@ export async function getSettings(): Promise<UserSettings | null> {
   return settings
 }
 
-export async function saveSettingsAction(settings: Partial<UserSettings>): Promise<UserSettings> {
-  const { user } = await requireAuth()
+export interface SaveSettingsResult {
+  success: boolean
+  data?: UserSettings
+  error?: string
+}
 
-  // Enforce schema validation
-  const validatedSettings = SettingsSchema.parse(settings)
+export async function saveSettingsAction(settings: Partial<UserSettings>): Promise<SaveSettingsResult> {
+  try {
+    const { user } = await requireAuth()
 
-  // Normalize empty strings to null
-  if (validatedSettings.slackWebhook === "") {
-    validatedSettings.slackWebhook = null
-  }
+    // Enforce schema validation
+    const validatedSettings = SettingsSchema.parse(settings)
 
-  const dbData = keysToSnake({
-    ...validatedSettings,
-    userId: user.id,
-    updatedAt: new Date().toISOString(),
-  })
-
-  if (dbData.github_token) {
-    dbData.github_token = encrypt(dbData.github_token)
-  }
-
-  if (dbData.id) {
-    const data = await updateSettingsDAL(user.id, dbData.id, dbData)
-    const res = keysToCamel<UserSettings>(data)
-    if (res.githubToken) {
-      res.githubToken = decrypt(res.githubToken)
+    // Normalize empty strings to null
+    if (validatedSettings.slackWebhook === "") {
+      validatedSettings.slackWebhook = null
     }
-    return res
-  } else {
-    const data = await insertSettingsDAL(user.id, {
-      ...dbData,
-      created_at: new Date().toISOString(),
+
+    const dbData = keysToSnake({
+      ...validatedSettings,
+      userId: user.id,
+      updatedAt: new Date().toISOString(),
     })
-    const res = keysToCamel<UserSettings>(data)
+
+    if (dbData.github_token) {
+      dbData.github_token = encrypt(dbData.github_token)
+    }
+
+    let res: UserSettings
+    if (dbData.id) {
+      const data = await updateSettingsDAL(user.id, dbData.id, dbData)
+      res = keysToCamel<UserSettings>(data)
+    } else {
+      const data = await insertSettingsDAL(user.id, {
+        ...dbData,
+        created_at: new Date().toISOString(),
+      })
+      res = keysToCamel<UserSettings>(data)
+    }
+
     if (res.githubToken) {
       res.githubToken = decrypt(res.githubToken)
     }
-    return res
+
+    return {
+      success: true,
+      data: res
+    }
+  } catch (err: any) {
+    console.error("Error in saveSettingsAction:", err)
+    let errorMessage = err.message || "Failed to save settings"
+    if (err instanceof z.ZodError) {
+      errorMessage = err.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
+    }
+    return {
+      success: false,
+      error: errorMessage
+    }
   }
 }

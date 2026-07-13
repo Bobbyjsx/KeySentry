@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useSupabase } from "./AuthProvider"
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 export default function LoginForm() {
   const { supabase } = useSupabase()
@@ -28,12 +29,15 @@ export default function LoginForm() {
 
       if (error) {
         setError(error.message)
+        toast.error(error.message)
         return
       }
 
+      toast.success("Successfully authenticated")
       router.refresh()
     } catch (err) {
       setError("An unexpected error occurred")
+      toast.error("An unexpected error occurred")
       console.error(err)
     } finally {
       setIsLoading(false)

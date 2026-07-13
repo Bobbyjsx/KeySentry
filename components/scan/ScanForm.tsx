@@ -51,12 +51,33 @@ export default function ScanForm() {
       return
     }
 
-    toast.info("Your scan has been initiated and is running...")
+    // Client-side format checks
+    for (const source of validSources) {
+      if (source.type === "github" || source.type === "gitlab") {
+        if (source.value.includes("/")) {
+          const parts = source.value.split("/")
+          if (parts.length !== 2 || !parts[0].trim() || !parts[1].trim()) {
+            toast.error(`Invalid repository format: "${source.value}". Must be in "owner/repo" format.`)
+            return
+          }
+        } else {
+          // Username/organization
+          if (!/^[a-zA-Z0-9-_]+$/.test(source.value)) {
+            toast.error(`Invalid account format: "${source.value}". Must contain only alphanumeric characters, hyphens, or underscores.`)
+            return
+          }
+        }
+      }
+    }
 
     startScanMutation.mutate(
       { sources: validSources, scanDepth },
       {
         onSuccess: (data) => {
+          if (!data.success) {
+            toast.error(data.error || "Failed to start scan")
+            return
+          }
           toast.success("Scan initiated in the background! Redirecting to details...")
           const scanUrl = `/scan/${data.scanId}`
           router.push(scanUrl)
@@ -77,21 +98,23 @@ export default function ScanForm() {
   const loading = startScanMutation.isPending
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="rounded-sm border border-hairline bg-canvas-card p-6 sm:p-8">
       <form onSubmit={startScan} className="space-y-6">
-        <div>
-          <h2 className="text-xl font-semibold text-white">Configure Scan Sources</h2>
-          <p className="mt-1 text-sm text-gray-400">Specify the sources you want to scan for exposed API keys.</p>
+        <div className="pb-6 border-b border-hairline space-y-1">
+          <h2 className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono flex items-center">
+            Configure Scan Sources
+          </h2>
+          <p className="text-sm text-gray-400 font-sans">Specify the sources you want to scan for exposed API keys.</p>
         </div>
 
         <div className="space-y-4">
           {sources.map((source, index) => (
-            <div key={index} className="flex items-start space-x-2">
+            <div key={index} className="flex items-center space-x-3">
               <div className="w-1/4">
                 <select
                   value={source.type}
                   onChange={(e) => updateSource(index, "type", e.target.value)}
-                  className="block w-full rounded-md border border-gray-600 bg-gray-700 py-2 px-3 text-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                  className="block w-full rounded-pill border border-hairline bg-canvas-soft py-2 px-3 text-xs text-white placeholder-gray-600 outline-none focus:border-white transition-colors cursor-pointer"
                 >
                   <option value="github">GitHub</option>
                   <option value="gitlab">GitLab</option>
@@ -101,11 +124,11 @@ export default function ScanForm() {
               </div>
 
               <div className="relative flex-1">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  {source.type === "github" && <Github className="h-5 w-5 text-gray-400" />}
-                  {source.type === "gitlab" && <GitlabLogo className="h-5 w-5 text-gray-400" />}
-                  {source.type === "pastebin" && <FileText className="h-5 w-5 text-gray-400" />}
-                  {source.type === "other" && <Database className="h-5 w-5 text-gray-400" />}
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
+                  {source.type === "github" && <Github className="h-4 w-4 text-gray-400" />}
+                  {source.type === "gitlab" && <GitlabLogo className="h-4 w-4 text-gray-400" />}
+                  {source.type === "pastebin" && <FileText className="h-4 w-4 text-gray-400" />}
+                  {source.type === "other" && <Database className="h-4 w-4 text-gray-400" />}
                 </div>
                 <input
                   type="text"
@@ -120,7 +143,7 @@ export default function ScanForm() {
                           ? "username or search term"
                           : "URL or search term"
                   }
-                  className="block w-full rounded-md border border-gray-600 bg-gray-700 py-2 pl-10 pr-3 text-white shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500"
+                  className="block w-full rounded-sm border border-hairline bg-canvas-soft py-2.5 pl-10 pr-3.5 text-xs text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
                 />
               </div>
 
@@ -128,9 +151,9 @@ export default function ScanForm() {
                 type="button"
                 onClick={() => removeSource(index)}
                 disabled={sources.length === 1}
-                className="rounded-md bg-gray-700 p-2 text-gray-400 hover:bg-gray-600 hover:text-white disabled:opacity-50"
+                className="rounded-full border border-white/20 bg-canvas-soft p-2.5 text-gray-400 hover:text-white hover:bg-canvas-soft/80 disabled:opacity-50 transition-colors"
               >
-                <Minus className="h-5 w-5" />
+                <Minus className="h-4 w-4" />
               </button>
             </div>
           ))}
@@ -138,22 +161,22 @@ export default function ScanForm() {
           <button
             type="button"
             onClick={addSource}
-            className="flex items-center space-x-1 rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-600"
+            className="flex items-center space-x-1.5 rounded-pill border border-white/20 bg-transparent px-3 py-1.5 font-mono text-xs uppercase text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3 w-3" />
             <span>Add Source</span>
           </button>
         </div>
 
-        <div className="border-t border-gray-700 pt-6">
-          <h2 className="text-xl font-semibold text-white">Scan Options</h2>
-          <p className="mt-1 text-sm text-gray-400">Configure additional options for your scan.</p>
+        <div className="border-t border-hairline pt-6 space-y-1">
+          <h2 className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">Scan Options</h2>
+          <p className="text-sm text-gray-400 font-sans">Configure additional options for your scan.</p>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-400">Scan Depth</label>
-            <div className="mt-2 flex items-center space-x-4">
+            <label className="block font-mono text-[10px] uppercase text-gray-400 tracking-caption-mono-sm mb-2">Scan Depth</label>
+            <div className="mt-2 flex items-center space-x-6">
               <label className="flex cursor-pointer items-center space-x-2">
                 <input
                   type="radio"
@@ -161,9 +184,9 @@ export default function ScanForm() {
                   value="shallow"
                   checked={scanDepth === "shallow"}
                   onChange={() => setScanDepth("shallow")}
-                  className="h-4 w-4 border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 border-hairline bg-canvas-soft text-white focus:ring-0 focus:ring-offset-0"
                 />
-                <span className="text-sm text-gray-300">Shallow (faster, less thorough)</span>
+                <span className="text-xs text-gray-300 font-mono uppercase tracking-wider">Shallow (faster)</span>
               </label>
 
               <label className="flex cursor-pointer items-center space-x-2">
@@ -173,19 +196,19 @@ export default function ScanForm() {
                   value="deep"
                   checked={scanDepth === "deep"}
                   onChange={() => setScanDepth("deep")}
-                  className="h-4 w-4 border-gray-600 bg-gray-700 text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 border-hairline bg-canvas-soft text-white focus:ring-0 focus:ring-offset-0"
                 />
-                <span className="text-sm text-gray-300">Deep (slower, more thorough)</span>
+                <span className="text-xs text-gray-300 font-mono uppercase tracking-wider">Deep (thorough)</span>
               </label>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-4 border-t border-hairline">
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center space-x-2 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70"
+            className="flex items-center space-x-2 rounded-pill border border-white bg-white px-5 py-2.5 font-mono text-xs uppercase text-canvas hover:bg-canvas hover:text-white transition-colors disabled:opacity-50"
           >
             {loading ? (
               <>

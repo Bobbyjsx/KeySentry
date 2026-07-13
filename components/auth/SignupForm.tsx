@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useSupabase } from "./AuthProvider"
 import { Shield, Eye, EyeOff, Loader2, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 
 export default function SignupForm() {
   const { supabase } = useSupabase()
@@ -26,6 +27,7 @@ export default function SignupForm() {
 
     if (password !== confirmPassword) {
       setError("Passwords do not match")
+      toast.error("Passwords do not match")
       setIsLoading(false)
       return
     }
@@ -41,12 +43,16 @@ export default function SignupForm() {
 
       if (error) {
         setError(error.message)
+        toast.error(error.message)
         return
       }
 
-      setMessage("Verification email has been sent. Please check your inbox.")
+      const successMsg = "Verification email has been sent. Please check your inbox."
+      setMessage(successMsg)
+      toast.success(successMsg)
     } catch (err) {
       setError("An unexpected error occurred")
+      toast.error("An unexpected error occurred")
       console.error(err)
     } finally {
       setIsLoading(false)

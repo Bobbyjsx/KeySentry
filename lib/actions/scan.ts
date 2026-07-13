@@ -9,57 +9,77 @@ import {
   getScanDiscoveriesDAL,
 } from "@/lib/dal/scans"
 import { requireAuth } from "@/lib/auth-server"
+import { getSettingsDAL } from "@/lib/dal/settings"
 
 export interface ScanResult {
   success: boolean
-  keysFound: number
-  durationSeconds: number
-  scanId: string
+  keysFound?: number
+  durationSeconds?: number
+  scanId?: string
+  error?: string
 }
 
 export async function startScanAction(
   sources: ScanSource[],
   scanDepth: "shallow" | "deep"
 ): Promise<ScanResult> {
-  const { user, supabase } = await requireAuth()
-
-  // Create scan history record in_progress via DAL
-  const scanHistoryData = {
-    scan_date: new Date().toISOString(),
-    keys_found: 0,
-    sources_scanned: sources.length,
-    duration_seconds: 0,
-    status: "in_progress",
-    sources: sources as any,
-    repos_scanned: 0,
-    files_scanned: 0,
-  }
-
-  const scanData = await createScanHistoryDAL(user.id, scanHistoryData)
-
-  // Invoke the Supabase Edge Function to process the scan asynchronously
   try {
-    const { error: invokeError } = await supabase.functions.invoke("run-scan", {
-      body: {
-        userId: user.id,
-        sources,
-        scanId: scanData.id,
-      },
-    })
-    if (invokeError) throw invokeError
-  } catch (error) {
-    console.error("Failed to invoke Edge Function, falling back to local background execution:", error)
-    // Fallback: run local background task if Edge Function fails to trigger
-    runGitHubScan(user.id, sources, scanData.id).catch((err: any) => {
-      console.error(`Background fallback scan failed for session ${scanData.id}:`, err)
-    })
-  }
+    const { user, supabase } = await requireAuth()
 
-  return {
-    success: true,
-    keysFound: 0,
-    durationSeconds: 0,
-    scanId: scanData.id,
+    // Retrieve settings to check for GitHub token configuration
+    const settings = await getSettingsDAL(user.id)
+    if (!settings || !settings.github_token) {
+      return {
+        success: false,
+        error: "GitHub token is missing. Please configure your GitHub API token in Settings before running a scan."
+      }
+    }
+
+    // Create scan history record in_progress via DAL
+    const scanHistoryData = {
+      scan_date: new Date().toISOString(),
+      keys_found: 0,
+      sources_scanned: sources.length,
+      duration_seconds: 0,
+      status: "in_progress",
+      sources: sources as any,
+      repos_scanned: 0,
+      files_scanned: 0,
+      trigger: "manual",
+    }
+
+    const scanData = await createScanHistoryDAL(user.id, scanHistoryData)
+
+    // Invoke the Supabase Edge Function to process the scan asynchronously
+    try {
+      const { error: invokeError } = await supabase.functions.invoke("run-scan", {
+        body: {
+          userId: user.id,
+          sources,
+          scanId: scanData.id,
+        },
+      })
+      if (invokeError) throw invokeError
+    } catch (error) {
+      console.error("Failed to invoke Edge Function, falling back to local background execution:", error)
+      // Fallback: run local background task if Edge Function fails to trigger
+      runGitHubScan(user.id, sources, scanData.id).catch((err: any) => {
+        console.error(`Background fallback scan failed for session ${scanData.id}:`, err)
+      })
+    }
+
+    return {
+      success: true,
+      keysFound: 0,
+      durationSeconds: 0,
+      scanId: scanData.id,
+    }
+  } catch (err: any) {
+    console.error("Error in startScanAction:", err)
+    return {
+      success: false,
+      error: err.message || "Failed to start scan"
+    }
   }
 }
 
@@ -74,6 +94,8 @@ export interface ScanHistoryRecord {
   sources?: ScanSource[]
   reposScanned: number
   filesScanned: number
+  trigger: string
+  triggerLink: string | null
 }
 
 export async function getScanHistoryAction(): Promise<ScanHistoryRecord[]> {

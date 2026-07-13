@@ -121,7 +121,26 @@ export default function ScanDetailsView({
       <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 pb-4 border-b border-hairline">
         <div>
           <h1 className="text-display-sm font-normal text-white tracking-display-sm">Scan Session Details</h1>
-          <p className="mt-1 text-caption-mono-sm font-mono uppercase text-gray-500">ID: {scan.id}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption-mono-sm font-mono uppercase text-gray-500">
+            <span>ID: {scan.id}</span>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              Trigger:{" "}
+              {scan.triggerLink ? (
+                <a
+                  href={scan.triggerLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-breeze hover:text-white underline transition-colors inline-flex items-center"
+                >
+                  {scan.trigger}
+                  <ExternalLink className="h-3 w-3 ml-0.5 text-accent-breeze" />
+                </a>
+              ) : (
+                <span className="text-white">{scan.trigger}</span>
+              )}
+            </span>
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           {scan.status !== "in_progress" && (

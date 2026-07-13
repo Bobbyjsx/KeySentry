@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { useSupabase } from "./AuthProvider"
 import { Shield, Key, Loader2, Sparkles } from "lucide-react"
+import { toast } from "sonner"
 
 export default function ForgotPasswordForm() {
   const { supabase } = useSupabase()
@@ -25,12 +26,16 @@ export default function ForgotPasswordForm() {
 
       if (error) {
         setError(error.message)
+        toast.error(error.message)
         return
       }
 
-      setMessage("Check your email for the password reset link")
+      const successMsg = "Check your email for the password reset link"
+      setMessage(successMsg)
+      toast.success(successMsg)
     } catch (err) {
       setError("An unexpected error occurred")
+      toast.error("An unexpected error occurred")
       console.error(err)
     } finally {
       setIsLoading(false)

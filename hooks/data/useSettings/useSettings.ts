@@ -13,7 +13,13 @@ export function useSaveSettings() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (settings: Partial<UserSettings>) => saveSettingsAction(settings),
+    mutationFn: async (settings: Partial<UserSettings>) => {
+      const result = await saveSettingsAction(settings)
+      if (!result.success) {
+        throw new Error(result.error || "Failed to save settings")
+      }
+      return result.data!
+    },
     onSuccess: (data) => {
       queryClient.setQueryData(["settings"], data)
     },
