@@ -19,6 +19,7 @@ export interface Database {
           is_archived: boolean
           risk_level: string
           notes: string | null
+          scan_id: string | null
         }
         Insert: {
           id?: string
@@ -35,6 +36,7 @@ export interface Database {
           is_archived?: boolean
           risk_level?: string
           notes?: string | null
+          scan_id?: string | null
         }
         Update: {
           id?: string
@@ -51,6 +53,7 @@ export interface Database {
           is_archived?: boolean
           risk_level?: string
           notes?: string | null
+          scan_id?: string | null
         }
       }
       alerts: {
@@ -129,6 +132,11 @@ export interface Database {
           sources_scanned: number
           duration_seconds: number
           status: string
+          sources: Json | null
+          repos_scanned: number
+          files_scanned: number
+          trigger: string
+          trigger_link: string | null
         }
         Insert: {
           id?: string
@@ -138,6 +146,11 @@ export interface Database {
           sources_scanned?: number
           duration_seconds?: number
           status?: string
+          sources?: Json | null
+          repos_scanned?: number
+          files_scanned?: number
+          trigger?: string
+          trigger_link?: string | null
         }
         Update: {
           id?: string
@@ -147,6 +160,11 @@ export interface Database {
           sources_scanned?: number
           duration_seconds?: number
           status?: string
+          sources?: Json | null
+          repos_scanned?: number
+          files_scanned?: number
+          trigger?: string
+          trigger_link?: string | null
         }
       }
     }

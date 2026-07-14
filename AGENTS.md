@@ -72,3 +72,50 @@ The authentication system follows a modern Next.js App Router approach with Supa
 - Protected routes with middleware
 - Service role key used only on the server
 - Email verification for new accounts
+
+# Agent Supabase Local Credentials
+
+Email: agent@keysentry.ai
+Password: SuperSecureAgentPassword123!
+User ID: d0a86337-77f9-451e-aa1b-ab1cc7f9e619
+Date Created: 2026-06-20
+Supabase API URL: http://127.0.0.1:54321
+Supabase Anon Key: sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH
+
+# KeySentry Project Standards
+
+This section outlines the standards and architecture required for the KeySentry application.
+
+---
+
+## 🏗️ Core Way of Working
+
+All data must move in this order:
+1. **UI Component:** Uses a custom hook.
+2. **Custom Hook (`src/hooks/data/use[Domain]/[resource].ts`):** Uses React Query for caching.
+3. **Server Action (`src/lib/actions/[domain].ts` or similar):** Securely talks to the database.
+4. **Logic Engine (`src/lib/core/[manager].ts` or similar):** Pure logic and Supabase code.
+
+**Rule:** DO NOT use `fetch()` to `/api` routes to create, read, update, or delete data (except for external webhooks or integrations like actual code scanning triggers if appropriate). Create a Data Access Layer (DAL) so that users can only access their own data, and all Supabase requests go through that layer. Enforce RLS on the database.
+
+---
+
+## 🔄 Name Conversions
+
+- **Database:** Use `snake_case` (like `short_code`).
+- **App/Frontend:** Use `camelCase` (like `shortCode`).
+- **How to convert:** 
+  - All Server Actions must return `camelCase`.
+  - The UI must only use `camelCase`.
+
+---
+
+## 🛠️ Reusable Parts
+
+Look for existing components in `components/ui` before making something new.
+
+## ⚠️ Code Quality
+
+1. **No "any":** Always use proper TypeScript types.
+2. **Popups:** Use **Sonner** toasts (`toast.success` or `toast.error`) instead of alerts.
+

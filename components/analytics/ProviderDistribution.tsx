@@ -1,42 +1,63 @@
 "use client"
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts"
+import { PieChart, Pie, Cell } from "recharts"
 import { PieChartIcon } from "lucide-react"
-import type { Database } from "@/types/supabase"
+import type { ApiKeyDiscovery } from "@/lib/actions/discoveries"
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 
-type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"]
+const chartConfig = {
+  openai: {
+    label: "OpenAI",
+    color: "#ff7a17",
+  },
+  anthropic: {
+    label: "Anthropic",
+    color: "#7c3aed",
+  },
+  cohere: {
+    label: "Cohere",
+    color: "#c4b5fd",
+  },
+  midjourney: {
+    label: "Midjourney",
+    color: "#a0c3ec",
+  },
+  other: {
+    label: "Other",
+    color: "#ffffff",
+  },
+} satisfies ChartConfig
 
-export default function ProviderDistribution({ keys }: { keys: ApiKey[] }) {
+export default function ProviderDistribution({ keys }: { keys: ApiKeyDiscovery[] }) {
   // Process data for chart
   const processData = () => {
     const providerCounts: Record<string, number> = {}
 
     keys.forEach((key) => {
-      if (!providerCounts[key.provider]) {
-        providerCounts[key.provider] = 0
-      }
-
-      providerCounts[key.provider]++
+      const prov = key.provider || "Other"
+      providerCounts[prov] = (providerCounts[prov] || 0) + 1
     })
 
-    return Object.entries(providerCounts).map(([name, value]) => ({ name, value }))
+    return Object.entries(providerCounts).map(([name, value]) => {
+      const key = name.toLowerCase()
+      const hasConfig = key in chartConfig
+      const fill = hasConfig ? `var(--color-${key})` : "var(--color-other)"
+      return { name, value, fill }
+    })
   }
 
   const chartData = processData()
 
-  // Colors for different providers
-  const COLORS = ["#818CF8", "#34D399", "#F87171", "#FBBF24", "#60A5FA", "#A78BFA"]
-
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-4 shadow-lg">
-      <div className="mb-4 flex items-center space-x-2">
-        <PieChartIcon className="h-5 w-5 text-indigo-400" />
-        <h2 className="text-lg font-medium text-white">Provider Distribution</h2>
+    <div className="rounded-sm border border-hairline bg-canvas-card p-5 font-sans">
+      <div className="mb-6 flex items-center space-x-2">
+        <PieChartIcon className="h-4 w-4 text-white" />
+        <h2 className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">Provider Distribution</h2>
       </div>
 
-      <div className="h-64">
+      <div className="h-64 flex items-center justify-center">
         {chartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ChartContainer config={chartConfig} className="h-full w-full">
             <PieChart>
               <Pie
                 data={chartData}
@@ -44,28 +65,24 @@ export default function ProviderDistribution({ keys }: { keys: ApiKey[] }) {
                 cy="50%"
                 labelLine={false}
                 outerRadius={80}
-                fill="#8884d8"
                 dataKey="value"
                 label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
               >
                 {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={entry.fill} stroke="#191919" strokeWidth={2} />
                 ))}
               </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1F2937",
-                  borderColor: "#374151",
-                  color: "#F9FAFB",
-                }}
-                formatter={(value: number) => [`${value} keys`, "Count"]}
+              <ChartTooltip
+                content={<ChartTooltipContent formatter={(value) => [`${value} keys`, "Count"]} />}
               />
-              <Legend />
+              <ChartLegend 
+                content={<ChartLegendContent className="font-mono text-[10px] uppercase text-gray-400 tracking-wider" />}
+              />
             </PieChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-gray-400">No data available</p>
+          <div className="text-center py-10">
+            <p className="text-sm font-mono uppercase tracking-wider text-gray-500">No data available</p>
           </div>
         )}
       </div>

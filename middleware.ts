@@ -61,10 +61,10 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
 
   // Define protected routes that require authentication
-  const protectedRoutes = ['/settings', '/api-keys']
+  const protectedRoutes = ['/settings', '/api-keys', '/scan', '/discoveries', '/alerts', '/analytics']
   const isProtectedRoute = protectedRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
-  ) || request.nextUrl.pathname === '/'
+  )
 
   // Redirect if accessing protected route without auth
   if (isProtectedRoute && !session) {

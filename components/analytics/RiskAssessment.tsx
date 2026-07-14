@@ -1,13 +1,27 @@
 "use client"
 
 import { useState } from "react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 import { ShieldAlert } from "lucide-react"
-import type { Database } from "@/types/supabase"
+import type { ApiKeyDiscovery } from "@/lib/actions/discoveries"
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 
-type ApiKey = Database["public"]["Tables"]["api_keys"]["Row"]
+const chartConfig = {
+  high: {
+    label: "High Risk",
+    color: "#ff7a17",
+  },
+  medium: {
+    label: "Medium Risk",
+    color: "#c4b5fd",
+  },
+  low: {
+    label: "Low Risk",
+    color: "#a0c3ec",
+  },
+} satisfies ChartConfig
 
-export default function RiskAssessment({ keys }: { keys: ApiKey[] }) {
+export default function RiskAssessment({ keys }: { keys: ApiKeyDiscovery[] }) {
   const [view, setView] = useState<"provider" | "status">("provider")
 
   // Process data for provider risk chart
@@ -24,7 +38,7 @@ export default function RiskAssessment({ keys }: { keys: ApiKey[] }) {
         }
       }
 
-      providerRisks[key.provider][key.risk_level as "high" | "medium" | "low"]++
+      providerRisks[key.provider][key.riskLevel as "high" | "medium" | "low"]++
     })
 
     return Object.values(providerRisks)
@@ -44,7 +58,7 @@ export default function RiskAssessment({ keys }: { keys: ApiKey[] }) {
         }
       }
 
-      statusRisks[key.status][key.risk_level as "high" | "medium" | "low"]++
+      statusRisks[key.status][key.riskLevel as "high" | "medium" | "low"]++
     })
 
     return Object.values(statusRisks)
@@ -54,26 +68,26 @@ export default function RiskAssessment({ keys }: { keys: ApiKey[] }) {
   const statusData = processStatusData()
 
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-4 shadow-lg">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="rounded-sm border border-hairline bg-canvas-card p-5 font-sans">
+      <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <ShieldAlert className="h-5 w-5 text-indigo-400" />
-          <h2 className="text-lg font-medium text-white">Risk Assessment</h2>
+          <ShieldAlert className="h-4 w-4 text-white" />
+          <h2 className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">Risk Assessment</h2>
         </div>
 
-        <div className="flex space-x-1 rounded-md bg-gray-700 p-1">
+        <div className="flex space-x-1.5 rounded-pill border border-hairline bg-canvas-soft p-1">
           <button
             onClick={() => setView("provider")}
-            className={`rounded px-3 py-1 text-xs ${
-              view === "provider" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"
+            className={`rounded-pill px-3 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+              view === "provider" ? "bg-white text-canvas font-normal" : "text-gray-400 hover:text-white"
             }`}
           >
             By Provider
           </button>
           <button
             onClick={() => setView("status")}
-            className={`rounded px-3 py-1 text-xs ${
-              view === "status" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-white"
+            className={`rounded-pill px-3 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+              view === "status" ? "bg-white text-canvas font-normal" : "text-gray-400 hover:text-white"
             }`}
           >
             By Status
@@ -81,32 +95,35 @@ export default function RiskAssessment({ keys }: { keys: ApiKey[] }) {
         </div>
       </div>
 
-      <div className="h-80">
+      <div className="h-80 flex items-center justify-center">
         {(view === "provider" ? providerData : statusData).length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
+          <ChartContainer config={chartConfig} className="h-full w-full">
             <BarChart
               data={view === "provider" ? providerData : statusData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              margin={{ top: 20, right: 10, left: -20, bottom: 5 }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey={view === "provider" ? "provider" : "status"} stroke="#9CA3AF" />
-              <YAxis stroke="#9CA3AF" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1F2937",
-                  borderColor: "#374151",
-                  color: "#F9FAFB",
-                }}
+              <CartesianGrid strokeDasharray="3 3" stroke="#212327" />
+              <XAxis 
+                dataKey={view === "provider" ? "provider" : "status"} 
+                stroke="#7d8187"
+                tick={{ fill: "#7d8187", fontSize: 10, fontFamily: "var(--font-geist-mono)" }}
               />
-              <Legend />
-              <Bar dataKey="high" name="High Risk" stackId="a" fill="#F87171" />
-              <Bar dataKey="medium" name="Medium Risk" stackId="a" fill="#FBBF24" />
-              <Bar dataKey="low" name="Low Risk" stackId="a" fill="#34D399" />
+              <YAxis 
+                stroke="#7d8187"
+                tick={{ fill: "#7d8187", fontSize: 10, fontFamily: "var(--font-geist-mono)" }}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartLegend 
+                content={<ChartLegendContent className="font-mono text-[10px] uppercase text-gray-400 tracking-wider pt-4" />}
+              />
+              <Bar dataKey="high" name="High Risk" stackId="a" fill="var(--color-high)" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="medium" name="Medium Risk" stackId="a" fill="var(--color-medium)" radius={[0, 0, 0, 0]} />
+              <Bar dataKey="low" name="Low Risk" stackId="a" fill="var(--color-low)" radius={[0, 0, 0, 0]} />
             </BarChart>
-          </ResponsiveContainer>
+          </ChartContainer>
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-gray-400">No data available</p>
+          <div className="text-center py-10">
+            <p className="text-sm font-mono uppercase tracking-wider text-gray-500">No data available</p>
           </div>
         )}
       </div>

@@ -2,6 +2,8 @@
 import { createClient } from '@/lib/supabase/component'
 import type { Session, User } from '@supabase/supabase-js'
 import { createContext, useContext, useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import LoadingPage from './LoadingPage'
 
 // Create context types
 type SupabaseContextType = {
@@ -28,6 +30,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
     // Get initial session
@@ -49,10 +53,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         setSession(session)
         setUser(session?.user ?? null)
         setIsLoading(false)
+
+        if (event === 'SIGNED_OUT') {
+          router.push('/auth/login')
+          router.refresh()
+        }
       }
     )
 
@@ -60,18 +69,22 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase])
+  }, [supabase, router])
+
+  const isAuthPath = pathname?.startsWith('/auth')
+  const isProtectedPath = pathname !== '/' && !isAuthPath
+  const showLoading = isLoading || (!session && isProtectedPath)
 
   const value = {
     supabase,
     session,
     user,
-    isLoading,
+    isLoading: showLoading,
   }
 
   return (
     <SupabaseContext.Provider value={value}>
-      {children}
+      {showLoading ? <LoadingPage /> : children}
     </SupabaseContext.Provider>
   )
 }
