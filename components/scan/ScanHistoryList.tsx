@@ -75,7 +75,7 @@ export default function ScanHistoryList() {
     }
   }
 
-  if (isLoading && !activeScans) {
+  if (isLoading && !scans) {
     return (
       <div className="flex h-48 items-center justify-center rounded-sm border border-hairline bg-canvas-card p-6">
         <Loader2 className="h-8 w-8 animate-spin text-white" />
