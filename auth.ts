@@ -33,7 +33,7 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (trigger === "update" && session) {
         if (session.user) {
-          token.user = { ...token.user, ...session.user } as any;
+          token.user = { ...(token.user as any), ...session.user } as any;
           if (session.user.accessToken) {
              token.accessToken = session.user.accessToken;
           }

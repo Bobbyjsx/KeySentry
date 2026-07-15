@@ -97,9 +97,7 @@ export default function OnboardingWizard({
     try {
       const cleanTarget = data.scanTarget.replace(/\s+/g, "");
       const scanRes = await startScanMutation.mutateAsync({
-        sources: [{ type: "github", value: cleanTarget }],
-        repository: cleanTarget,
-        scanDepth: "shallow",
+        target: cleanTarget,
       });
 
       if (isServerError(scanRes)) {
