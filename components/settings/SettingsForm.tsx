@@ -9,12 +9,38 @@ import { useSession } from "next-auth/react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
 import { notifyServerError, isServerError } from "@/lib/server-error"
+import { Input } from "@/components/ui/input"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+
+const settingsSchema = z.object({
+  emailAlerts: z.boolean(),
+  slackWebhook: z.string().optional().refine((val) => {
+    if (!val) return true;
+    try {
+      const url = new URL(val);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }, { message: "Slack Webhook must be a valid http or https URL" }),
+  githubToken: z.string().optional().refine((val) => {
+    if (!val) return true;
+    return val.startsWith("ghp_") || val.startsWith("github_pat_");
+  }, { message: "GitHub Token must start with 'ghp_' or 'github_pat_'" }),
+  scanFrequency: z.enum(["hourly", "daily", "weekly", "monthly", "manual"]),
+  theme: z.enum(["light", "dark"]),
+})
+
+type SettingsFormValues = z.infer<typeof settingsSchema>
 
 export default function SettingsForm() {
   const { data: session } = useSession()
   const user = session?.user as any
   const [showToken, setShowToken] = useState(false)
-  const defaultSettings: UserSettings = {
+  const [isChangingToken, setIsChangingToken] = useState(false)
+  const defaultSettings: SettingsFormValues = {
     emailAlerts: true,
     slackWebhook: "",
     githubToken: "",
@@ -25,57 +51,41 @@ export default function SettingsForm() {
   const { data: initialSettings, isLoading } = useGetSettings()
   const saveMutation = useSaveSettings()
 
-  const [settings, setSettings] = useState<UserSettings>(defaultSettings)
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: defaultSettings,
+  })
+
+  const themeValue = watch("theme")
+  const scanFrequencyValue = watch("scanFrequency")
 
   useEffect(() => {
     if (initialSettings) {
-      setSettings(initialSettings)
-    }
-  }, [initialSettings])
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target
-
-    if (type === "checkbox") {
-      const checked = (e.target as HTMLInputElement).checked
-      setSettings({ ...settings, [name]: checked })
-    } else {
-      setSettings({ ...settings, [name]: value })
-    }
-  }
-
-  const saveSettings = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // Client-side validation: Slack webhook URL format (if provided)
-    if (settings.slackWebhook) {
-      const webhook = settings.slackWebhook.trim()
-      if (webhook !== "") {
-        try {
-          const url = new URL(webhook)
-          if (url.protocol !== "http:" && url.protocol !== "https:") {
-            toast.error("Slack Webhook URL must start with http:// or https://")
-            return
-          }
-        } catch (err) {
-          toast.error("Slack Webhook must be a valid URL")
-          return
-        }
+      if (isServerError(initialSettings)) {
+        notifyServerError(initialSettings)
+        return
+      }
+      reset({
+        emailAlerts: initialSettings.emailAlerts ?? true,
+        slackWebhook: initialSettings.slackWebhook || "",
+        githubToken: initialSettings.githubToken || "",
+        scanFrequency: (initialSettings.scanFrequency as any) || "daily",
+        theme: (initialSettings.theme as any) || "dark",
+      })
+      if (!initialSettings.hasGithubToken) {
+        setIsChangingToken(true)
       }
     }
+  }, [initialSettings, reset])
 
-    // Client-side validation: GitHub token prefix (if provided)
-    if (settings.githubToken) {
-      const token = settings.githubToken.trim()
-      if (token !== "") {
-        if (!token.startsWith("ghp_") && !token.startsWith("github_pat_")) {
-          toast.error("GitHub Token must start with 'ghp_' (classic) or 'github_pat_' (fine-grained)")
-          return
-        }
-      }
-    }
-
-    saveMutation.mutate(settings, {
+  const onSubmit = async (data: SettingsFormValues) => {
+    saveMutation.mutate(data, {
       onSuccess: (result) => {
         if (isServerError(result)) {
           notifyServerError(result)
@@ -100,7 +110,7 @@ export default function SettingsForm() {
   return (
     <div className="space-y-6 font-sans">
       <div className="rounded-sm border border-hairline bg-canvas-card p-6 sm:p-8">
-        <form onSubmit={saveSettings} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="pb-6 border-b border-hairline flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1">
               <h2 className="flex items-center font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">
@@ -125,10 +135,8 @@ export default function SettingsForm() {
                 <label className="flex cursor-pointer items-center space-x-2">
                   <input
                     type="radio"
-                    name="theme"
                     value="light"
-                    checked={settings.theme === "light"}
-                    onChange={handleChange}
+                    {...register("theme")}
                     className="h-4 w-4 border-hairline bg-canvas-soft text-white focus:ring-0 focus:ring-offset-0"
                   />
                   <Sun className="h-4 w-4 text-gray-400" />
@@ -138,10 +146,8 @@ export default function SettingsForm() {
                 <label className="flex cursor-pointer items-center space-x-2">
                   <input
                     type="radio"
-                    name="theme"
                     value="dark"
-                    checked={settings.theme === "dark"}
-                    onChange={handleChange}
+                    {...register("theme")}
                     className="h-4 w-4 border-hairline bg-canvas-soft text-white focus:ring-0 focus:ring-offset-0"
                   />
                   <Moon className="h-4 w-4 text-gray-400" />
@@ -153,9 +159,7 @@ export default function SettingsForm() {
             <div className="space-y-2">
               <label className="block font-mono text-[10px] uppercase text-gray-400 tracking-caption-mono-sm">Scan Frequency</label>
               <select
-                name="scanFrequency"
-                value={settings.scanFrequency}
-                onChange={handleChange}
+                {...register("scanFrequency")}
                 className="block w-full rounded-pill border border-hairline bg-canvas-soft py-2 px-3 text-sm text-white focus:outline-none focus:border-white transition-colors"
               >
                 <option value="hourly">Hourly</option>
@@ -177,10 +181,8 @@ export default function SettingsForm() {
               <div className="flex h-5 items-center">
                 <input
                   id="emailAlerts"
-                  name="emailAlerts"
                   type="checkbox"
-                  checked={settings.emailAlerts}
-                  onChange={handleChange}
+                  {...register("emailAlerts")}
                   className="h-4 w-4 rounded-sm border-hairline bg-canvas-soft text-white focus:ring-0 focus:ring-offset-0"
                 />
               </div>
@@ -192,23 +194,15 @@ export default function SettingsForm() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="slackWebhook" className="block font-mono text-[10px] uppercase text-gray-400 tracking-caption-mono-sm">
-                Slack Webhook URL
-              </label>
-              <input
-                type="text"
-                name="slackWebhook"
-                id="slackWebhook"
-                value={settings.slackWebhook || ""}
-                onChange={handleChange}
-                placeholder="https://hooks.slack.com/services/..."
-                className="block w-full rounded-sm border border-hairline bg-canvas-soft py-2.5 px-3.5 text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
-              />
-              <p className="text-[10px] text-gray-500">
-                Optional. Add a Slack webhook URL to receive notifications in your Slack workspace.
-              </p>
-            </div>
+            <Input
+              id="slackWebhook"
+              type="text"
+              label="Slack Webhook URL"
+              placeholder="https://hooks.slack.com/services/..."
+              helpText="Optional. Add a Slack webhook URL to receive notifications in your Slack workspace."
+              error={errors.slackWebhook?.message}
+              {...register("slackWebhook")}
+            />
           </div>
 
           <div className="border-t border-hairline pt-6">
@@ -217,30 +211,54 @@ export default function SettingsForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="githubToken" className="block font-mono text-[10px] uppercase text-gray-400 tracking-caption-mono-sm">
-              GitHub Personal Access Token
-            </label>
-            <div className="relative">
-              <input
-                type={showToken ? "text" : "password"}
-                name="githubToken"
-                id="githubToken"
-                value={settings.githubToken || ""}
-                onChange={handleChange}
-                placeholder="ghp_..."
-                className="block w-full rounded-sm border border-hairline bg-canvas-soft py-2.5 pl-3.5 pr-10 text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
-              />
-              <button
-                type="button"
-                onClick={() => setShowToken(!showToken)}
-                className="absolute right-3 top-3 text-gray-500 hover:text-white transition-colors"
-              >
-                {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            <p className="text-[10px] text-gray-500">
-              Required for scanning GitHub repositories. Token needs 'repo' and 'read:user' scopes.
-            </p>
+            {initialSettings?.hasGithubToken && !isChangingToken ? (
+              <div className="flex items-center justify-between rounded-sm border border-hairline bg-canvas-soft p-4">
+                <div>
+                  <h3 className="font-mono text-xs uppercase text-white tracking-wider">GitHub Token Configured</h3>
+                  <p className="text-xs text-gray-500 mt-1">Your token is securely stored and actively used for scans.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsChangingToken(true)}
+                  className="rounded-pill border border-hairline bg-canvas px-4 py-1.5 font-mono text-xs uppercase text-white hover:bg-canvas-card transition-colors"
+                >
+                  Change Token
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Input
+                  id="githubToken"
+                  type={showToken ? "text" : "password"}
+                  label="GitHub Personal Access Token"
+                  placeholder="ghp_..."
+                  helpText="Required for scanning GitHub repositories. Token needs 'repo' and 'read:user' scopes."
+                  error={errors.githubToken?.message}
+                  {...register("githubToken")}
+                  rightNode={
+                    <button
+                      type="button"
+                      onClick={() => setShowToken(!showToken)}
+                      className="text-gray-500 hover:text-white transition-colors"
+                    >
+                      {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  }
+                />
+                {initialSettings?.hasGithubToken && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChangingToken(false)
+                      reset({ ...watch(), githubToken: "" })
+                    }}
+                    className="text-xs font-mono uppercase text-gray-500 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end pt-4 border-t border-hairline">
@@ -264,7 +282,6 @@ export default function SettingsForm() {
           </div>
         </form>
       </div>
-
     </div>
   )
 }

@@ -4,7 +4,13 @@
  */
 export function formatDateTime(dateString: string): string {
   if (!dateString) return "N/A"
-  const date = new Date(dateString)
+  
+  let str = dateString
+  if (!str.endsWith("Z") && !str.match(/[+-]\d{2}:\d{2}$/)) {
+    str += "Z"
+  }
+  
+  const date = new Date(str)
   if (isNaN(date.getTime())) return "N/A"
   
   return new Intl.DateTimeFormat("en-US", {

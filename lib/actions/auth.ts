@@ -3,18 +3,24 @@
 import { api } from "../axios";
 import { throwServerActionError } from "../server-error";
 
-type SignUpResponse = {
-  access_token: string;
-  refresh_token: string;
-  user_id: string;
-};
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken: string;
+  userId: string;
+}
 
-export async function signupAction(email: string, password: string) {
+export interface AuthSignup {
+  email: string;
+  password: string;
+  fullName: string;
+}
+
+export async function signupAction(request: AuthSignup) {
   try {
-    const { data } = await api.post<SignUpResponse>("/api/v1/auth/signup", {
-      email,
-      password,
-    });
+    const { data } = await api.post<AuthResponse>(
+      "/api/v1/auth/signup",
+      request,
+    );
     return data;
   } catch (err) {
     return throwServerActionError(err);
@@ -23,9 +29,12 @@ export async function signupAction(email: string, password: string) {
 
 export async function forgotPasswordAction(email: string) {
   try {
-    const { data } = await api.post<{ success: boolean; message?: string }>("/api/v1/auth/forgot-password", {
-      email,
-    });
+    const { data } = await api.post<{ success: boolean; message?: string }>(
+      "/api/v1/auth/forgot-password",
+      {
+        email,
+      },
+    );
     return data;
   } catch (err) {
     return throwServerActionError(err);
@@ -34,10 +43,13 @@ export async function forgotPasswordAction(email: string) {
 
 export async function resetPasswordAction(password: string, token: string) {
   try {
-    const { data } = await api.post<{ success: boolean; message?: string }>("/api/v1/auth/reset-password", {
-      password,
-      token,
-    });
+    const { data } = await api.post<{ success: boolean; message?: string }>(
+      "/api/v1/auth/reset-password",
+      {
+        password,
+        token,
+      },
+    );
     return data;
   } catch (err) {
     return throwServerActionError(err);

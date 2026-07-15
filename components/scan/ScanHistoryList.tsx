@@ -4,14 +4,24 @@ import { useGetScanHistory } from "@/hooks/data/useScan/useScan"
 import type { ScanHistoryRecord } from "@/lib/actions/scan"
 import { Clock, Database, Shield, ShieldAlert, Loader2, Plus, Eye, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { formatDateTime, formatDuration } from "@/lib/date"
+import { isServerError, notifyServerError } from "@/lib/server-error"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-export default function ScanHistoryList({ initialScans }: { initialScans: ScanHistoryRecord[] }) {
-  const { data: scans, isLoading } = useGetScanHistory(initialScans)
+export default function ScanHistoryList() {
+  const { data: scans, isLoading } = useGetScanHistory()
 
-  const activeScans = scans || initialScans
+  useEffect(() => {
+    if (scans && isServerError(scans)) {
+      notifyServerError(scans)
+    }
+  }, [scans])
+
+  const activeScans = useMemo(() => {
+    if (!scans || isServerError(scans)) return []
+    return scans
+  }, [scans])
 
   const [liveDurations, setLiveDurations] = useState<Record<string, number>>({})
 
@@ -129,13 +139,13 @@ export default function ScanHistoryList({ initialScans }: { initialScans: ScanHi
         <TableBody>
           {activeScans.map((scan) => (
             <TableRow key={scan.id} className="border-hairline hover:bg-canvas-soft/30 transition-colors">
-              <TableCell className="font-mono text-xs text-gray-300">
+              <TableCell className="font-mono text-xs text-gray-300 whitespace-nowrap">
                 {formatDateTime(scan.scanDate)}
               </TableCell>
               <TableCell>
                 {getStatusBadge(scan.status)}
               </TableCell>
-              <TableCell className="text-xs text-gray-300">
+              <TableCell className="text-xs text-gray-300 whitespace-nowrap">
                 {scan.triggerLink ? (
                   <a
                     href={scan.triggerLink}
@@ -152,25 +162,25 @@ export default function ScanHistoryList({ initialScans }: { initialScans: ScanHi
                   </span>
                 )}
               </TableCell>
-              <TableCell className="text-xs text-gray-300">
+              <TableCell className="text-xs text-gray-300 whitespace-nowrap">
                 <div className="flex items-center space-x-1.5">
                   <Database className="h-3.5 w-3.5 text-gray-500" />
                   <span>{scan.sourcesScanned} source(s)</span>
                 </div>
               </TableCell>
-              <TableCell className="text-xs text-gray-300">
+              <TableCell className="text-xs text-gray-300 whitespace-nowrap">
                 <span>{scan.reposScanned ?? 0} repo(s)</span>
               </TableCell>
-              <TableCell className="text-xs text-gray-300">
+              <TableCell className="text-xs text-gray-300 whitespace-nowrap">
                 <span>{scan.filesScanned ?? 0} file(s)</span>
               </TableCell>
-              <TableCell className="text-xs text-gray-300">
+              <TableCell className="text-xs text-gray-300 whitespace-nowrap">
                 <div className="flex items-center space-x-1.5">
                   <Clock className="h-3.5 w-3.5 text-gray-500" />
                   <span>{formatDuration(liveDurations[scan.id] ?? scan.durationSeconds)}</span>
                 </div>
               </TableCell>
-              <TableCell>
+              <TableCell className="whitespace-nowrap">
                 {scan.keysFound > 0 ? (
                   <div className="flex items-center space-x-1.5 text-accent-sunset font-mono text-xs">
                     <ShieldAlert className="h-3.5 w-3.5" />

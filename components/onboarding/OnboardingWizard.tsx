@@ -1,90 +1,123 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useSaveSettings } from "@/hooks/data/useSettings/useSettings"
-import { useStartScan } from "@/hooks/data/useScan/useScan"
-import { Github, ArrowRight, Check, Loader2, Shield, Key, Sparkles, AlertCircle, Eye, EyeOff } from "lucide-react"
-import { toast } from "sonner"
+import { Input } from "@/components/ui/input";
+import { useStartScan } from "@/hooks/data/useScan/useScan";
+import { useSaveSettings } from "@/hooks/data/useSettings/useSettings";
+import { isServerError, notifyServerError } from "@/lib/server-error";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  Eye,
+  EyeOff,
+  Github,
+  Key,
+  Loader2,
+  Shield,
+  Sparkles,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
-export default function OnboardingWizard({ onComplete }: { onComplete: () => void }) {
-  const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [token, setToken] = useState("")
-  const [showToken, setShowToken] = useState(false)
-  const [isValidating, setIsValidating] = useState(false)
-  const [gitUsername, setGitUsername] = useState("")
-  const [scanTarget, setScanTarget] = useState("")
-  const [isStartingScan, setIsStartingScan] = useState(false)
+const tokenSchema = z.object({
+  token: z
+    .string()
+    .refine((val) => val.startsWith("ghp_") || val.startsWith("github_pat_"), {
+      message:
+        "Please enter a valid GitHub token starting with ghp_ or github_pat_",
+    }),
+});
 
-  const saveSettingsMutation = useSaveSettings()
-  const startScanMutation = useStartScan()
-  const router = useRouter()
+type TokenFormValues = z.infer<typeof tokenSchema>;
 
-  const validateAndSaveToken = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!token.startsWith("ghp_") && !token.startsWith("github_pat_")) {
-      toast.error("Please enter a valid GitHub token starting with ghp_ or github_pat_")
-      return
-    }
+const scanSchema = z.object({
+  scanTarget: z
+    .string()
+    .min(1, "Please provide a repository or account to scan"),
+});
 
-    setIsValidating(true)
+type ScanFormValues = z.infer<typeof scanSchema>;
+
+export default function OnboardingWizard({
+  onComplete,
+}: {
+  onComplete: () => void;
+}) {
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [showToken, setShowToken] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [gitUsername, setGitUsername] = useState("");
+  const [isStartingScan, setIsStartingScan] = useState(false);
+
+  const saveSettingsMutation = useSaveSettings();
+  const startScanMutation = useStartScan();
+  const router = useRouter();
+
+  const tokenForm = useForm<TokenFormValues>({
+    resolver: zodResolver(tokenSchema),
+    defaultValues: { token: "" },
+  });
+
+  const scanForm = useForm<ScanFormValues>({
+    resolver: zodResolver(scanSchema),
+    defaultValues: { scanTarget: "" },
+  });
+
+  const onTokenSubmit = async (data: TokenFormValues) => {
+    setIsValidating(true);
     try {
-      // Validate token live against GitHub API
-      const res = await fetch("https://api.github.com/user", {
-        headers: { Authorization: `token ${token}` },
-      })
+      // Save token to DB via settings API
+      const saveRes = await saveSettingsMutation.mutateAsync({
+        githubToken: data.token,
+        scanFrequency: "daily",
+      });
 
-      if (!res.ok) {
-        throw new Error("GitHub validation failed. Please check your token scopes and correctness.")
+      if (isServerError(saveRes)) {
+        notifyServerError(saveRes);
+        return;
       }
 
-      const userData = await res.json()
-      const username = userData.login
-      setGitUsername(username)
-      setScanTarget(username) // Default scan target to their own account
-
-      // Save token to DB
-      await saveSettingsMutation.mutateAsync({
-        githubToken: token,
-        scanFrequency: "daily",
-      })
-
-      toast.success(`Welcome, ${username}! Token verified successfully.`)
-      setStep(3)
+      toast.success("Token verified and saved successfully.");
+      setStep(3);
     } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || "Failed to validate GitHub token")
+      if (isServerError(err)) {
+        notifyServerError(err);
+      }
     } finally {
-      setIsValidating(false)
+      setIsValidating(false);
     }
-  }
+  };
 
-  const handleStartScan = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!scanTarget.trim()) {
-      toast.error("Please provide a repository or account to scan")
-      return
-    }
-
-    setIsStartingScan(true)
+  const onScanSubmit = async (data: ScanFormValues) => {
+    setIsStartingScan(true);
     try {
-      const cleanTarget = scanTarget.replace(/\s+/g, "")
+      const cleanTarget = data.scanTarget.replace(/\s+/g, "");
       const scanRes = await startScanMutation.mutateAsync({
         sources: [{ type: "github", value: cleanTarget }],
+        repository: cleanTarget,
         scanDepth: "shallow",
-      })
+      });
 
-      toast.success("Initial scan triggered successfully!")
-      onComplete()
-      router.push(`/scan/${scanRes.scanId}`)
+      if (isServerError(scanRes)) {
+        notifyServerError(scanRes);
+        return;
+      }
+
+      toast.success("Initial scan triggered successfully!");
+      onComplete();
+      router.push(`/scan/${scanRes.scanId}`);
     } catch (err: any) {
-      console.error(err)
-      toast.error(err.message || "Failed to trigger scan")
+      if (isServerError(err)) {
+        notifyServerError(err);
+      }
     } finally {
-      setIsStartingScan(false)
+      setIsStartingScan(false);
     }
-  }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas p-4 sm:p-6 md:p-10 font-sans">
@@ -96,12 +129,20 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         <div className="mb-8 flex items-center justify-between border-b border-hairline pb-4">
           <div className="flex items-center space-x-2">
             <Shield className="h-6 w-6 text-white" />
-            <span className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono-sm">KeySentry Onboarding</span>
+            <span className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono-sm">
+              KeySentry Onboarding
+            </span>
           </div>
           <div className="flex space-x-1">
-            <div className={`h-1 w-8 rounded-pill transition-colors ${step >= 1 ? "bg-white" : "bg-hairline"}`} />
-            <div className={`h-1 w-8 rounded-pill transition-colors ${step >= 2 ? "bg-white" : "bg-hairline"}`} />
-            <div className={`h-1 w-8 rounded-pill transition-colors ${step >= 3 ? "bg-white" : "bg-hairline"}`} />
+            <div
+              className={`h-1 w-8 rounded-pill transition-colors ${step >= 1 ? "bg-white" : "bg-hairline"}`}
+            />
+            <div
+              className={`h-1 w-8 rounded-pill transition-colors ${step >= 2 ? "bg-white" : "bg-hairline"}`}
+            />
+            <div
+              className={`h-1 w-8 rounded-pill transition-colors ${step >= 3 ? "bg-white" : "bg-hairline"}`}
+            />
           </div>
         </div>
 
@@ -109,18 +150,24 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         {step === 1 && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <span className="font-mono text-caption-mono-sm uppercase text-accent-sunset tracking-caption-mono">01 / Introduction</span>
+              <span className="font-mono text-caption-mono-sm uppercase text-accent-sunset tracking-caption-mono">
+                01 / Introduction
+              </span>
               <h1 className="text-3xl font-light text-white tracking-display-sm">
                 Secure Your Secrets
               </h1>
               <p className="text-body-md text-gray-400">
-                KeySentry scans your repositories and environments in real-time to locate and alert you about exposed credentials and API keys before malicious actors do.
+                KeySentry scans your repositories and environments in real-time
+                to locate and alert you about exposed credentials and API keys
+                before malicious actors do.
               </p>
             </div>
             <div className="rounded-sm border border-hairline bg-canvas-soft p-4 flex items-start space-x-3">
               <Sparkles className="h-5 w-5 text-accent-twilight mt-0.5 flex-shrink-0" />
               <div className="text-body-sm text-gray-300">
-                You are minutes away from securing your codebase. Let's set up a read-only GitHub access token to configure your first code scanner.
+                You are minutes away from securing your codebase. Let's set up a
+                read-only GitHub access token to configure your first code
+                scanner.
               </div>
             </div>
             <div className="flex justify-end pt-4">
@@ -139,38 +186,43 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         {step === 2 && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <span className="font-mono text-caption-mono-sm uppercase text-accent-sunset tracking-caption-mono">02 / Authentication</span>
+              <span className="font-mono text-caption-mono-sm uppercase text-accent-sunset tracking-caption-mono">
+                02 / Authentication
+              </span>
               <h1 className="text-3xl font-light text-white tracking-display-sm">
                 Connect GitHub
               </h1>
               <p className="text-body-md text-gray-400">
-                We require a Personal Access Token to search your code. The token remains locally encrypted and is never shared.
+                We require a Personal Access Token to search your code. The
+                token remains locally encrypted and is never shared.
               </p>
             </div>
 
-            <form onSubmit={validateAndSaveToken} className="space-y-4">
+            <form
+              onSubmit={tokenForm.handleSubmit(onTokenSubmit)}
+              className="space-y-4"
+            >
               <div className="space-y-2">
                 <label className="block font-mono text-caption-mono-sm uppercase text-gray-400 tracking-caption-mono-sm">
                   Personal Access Token (Classic or Fine-grained)
                 </label>
-                <div className="relative">
-                  <Key className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                  <input
-                    type={showToken ? "text" : "password"}
-                    required
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="ghp_... or github_pat_..."
-                    className="w-full rounded-sm border border-hairline bg-canvas-soft py-3 pl-10 pr-10 font-mono text-sm text-white placeholder-gray-500 outline-none focus:border-white transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowToken(!showToken)}
-                    className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
-                  >
-                    {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
+                <Input
+                  type={showToken ? "text" : "password"}
+                  required
+                  placeholder="ghp_... or github_pat_..."
+                  error={tokenForm.formState.errors.token?.message}
+                  {...tokenForm.register("token")}
+                  leftNode={<Key className="h-4 w-4 text-gray-400" />}
+                  rightNode={
+                    <button
+                      type="button"
+                      onClick={() => setShowToken(!showToken)}
+                      className="text-gray-500 hover:text-white transition-colors"
+                    >
+                      {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  }
+                />
                 <div className="flex items-center space-x-2 pt-1">
                   <AlertCircle className="h-4 w-4 text-gray-500" />
                   <a
@@ -179,7 +231,8 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
                     rel="noopener noreferrer"
                     className="text-xs text-gray-400 hover:text-white underline transition-colors"
                   >
-                    Generate a token with `repo` and `read:user` scopes on GitHub
+                    Generate a token with `repo` and `read:user` scopes on
+                    GitHub
                   </a>
                 </div>
               </div>
@@ -218,33 +271,39 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         {step === 3 && (
           <div className="space-y-6">
             <div className="space-y-2">
-              <span className="font-mono text-caption-mono-sm uppercase text-accent-sunset tracking-caption-mono">03 / scan configuration</span>
+              <span className="font-mono text-caption-mono-sm uppercase text-accent-sunset tracking-caption-mono">
+                03 / scan configuration
+              </span>
               <h1 className="text-3xl font-light text-white tracking-display-sm">
                 Run First Scan
               </h1>
               <p className="text-body-md text-gray-400">
-                Setup your scan target. We will perform an initial scan immediately to identify any exposed credentials.
+                Setup your scan target. We will perform an initial scan
+                immediately to identify any exposed credentials.
               </p>
             </div>
 
-            <form onSubmit={handleStartScan} className="space-y-4">
+            <form
+              onSubmit={scanForm.handleSubmit(onScanSubmit)}
+              className="space-y-4"
+            >
               <div className="space-y-2">
                 <label className="block font-mono text-caption-mono-sm uppercase text-gray-400 tracking-caption-mono-sm">
                   Scan Target
                 </label>
                 <div className="relative">
-                  <Github className="absolute left-3 top-3.5 h-4 w-4 text-gray-400" />
-                  <input
+                  <Input
                     type="text"
                     required
-                    value={scanTarget}
-                    onChange={(e) => setScanTarget(e.target.value)}
                     placeholder="username, organization or username/repository"
-                    className="w-full rounded-sm border border-hairline bg-canvas-soft py-3 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none focus:border-white transition-colors"
+                    error={scanForm.formState.errors.scanTarget?.message}
+                    {...scanForm.register("scanTarget")}
+                    leftNode={<Github className="h-4 w-4 text-gray-400" />}
                   />
                 </div>
                 <p className="text-xs text-gray-500">
-                  Enter your GitHub username to scan all public repos, or a specific `owner/repo` to target a single workspace.
+                  Enter your GitHub username to scan all public repos, or a
+                  specific `owner/repo` to target a single workspace.
                 </p>
               </div>
 
@@ -279,5 +338,5 @@ export default function OnboardingWizard({ onComplete }: { onComplete: () => voi
         )}
       </div>
     </div>
-  )
+  );
 }

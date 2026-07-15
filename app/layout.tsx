@@ -1,10 +1,10 @@
-import AuthProvider from '@/components/auth/AuthProvider'
 import type { Metadata } from 'next'
 import { Inter, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
 import { Toaster } from '@/components/ui/toaster'
 import { Toaster as SonnerToaster } from 'sonner'
+import { SessionProvider } from 'next-auth/react'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -29,13 +29,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} ${geistMono.variable} font-sans bg-canvas text-white antialiased`}>
-        <Providers>
-          <AuthProvider>
+        <SessionProvider>
+          <Providers>
             {children}
             <Toaster />
             <SonnerToaster richColors theme="dark" />
-          </AuthProvider>
-        </Providers>
+          </Providers>
+        </SessionProvider>
       </body>
     </html>
   )

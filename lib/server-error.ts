@@ -95,7 +95,7 @@ export const getErrorMessage = (
   fallbackErrorMessage = FALLBACK_ERROR_MESSAGE,
 ): string | string[] => {
   const error = parseServerActionError(e);
-
+  console.log("error", error, "message", e);
   if (error && typeof error === "object" && "statusCode" in error) {
     const serverError = error as {
       statusCode?: number;
@@ -105,11 +105,7 @@ export const getErrorMessage = (
 
     const { statusCode, detail, message } = serverError;
 
-    if (
-      statusCode &&
-      [400, 404].includes(statusCode) &&
-      typeof detail === "string"
-    ) {
+    if (typeof detail === "string") {
       return detail;
     }
 

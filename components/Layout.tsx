@@ -5,6 +5,7 @@ import Navbar from "./Navbar"
 import { Sidebar } from "./Sidebar"
 import { useGetSettings } from "@/hooks/data/useSettings/useSettings"
 import OnboardingWizard from "./onboarding/OnboardingWizard"
+import { isServerError } from "@/lib/server-error"
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
@@ -12,7 +13,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [showOnboarding, setShowOnboarding] = React.useState(false)
 
   React.useEffect(() => {
-    if (!isLoading && settings && !settings.githubToken) {
+    if (!isLoading && settings && !isServerError(settings) && !settings.hasGithubToken) {
       setShowOnboarding(true)
     } else {
       setShowOnboarding(false)

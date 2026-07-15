@@ -5,14 +5,20 @@ import type { Alert } from "@/lib/actions/alerts"
 import { AlertCircle, AlertTriangle, Bell, Clock, ExternalLink, Info, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { formatDateTime } from "@/lib/date"
+import { isServerError, notifyServerError } from "@/lib/server-error"
+import { useEffect } from "react"
 
-export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }) {
-  const { data: alerts, isLoading } = useGetAlerts(initialAlerts)
+export default function AlertsList() {
+  const { data: alerts, isLoading } = useGetAlerts()
   const markAsReadMutation = useMarkAlertAsRead()
 
   const markAsRead = async (id: string) => {
     markAsReadMutation.mutate(id, {
-      onSuccess: () => {
+      onSuccess: (res) => {
+        if (isServerError(res)) {
+          notifyServerError(res)
+          return
+        }
         toast.success("Alert marked as read")
       },
       onError: (error: any) => {
@@ -20,6 +26,14 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
       },
     })
   }
+
+  useEffect(() => {
+    if (alerts && isServerError(alerts)) {
+      notifyServerError(alerts)
+    }
+  }, [alerts])
+
+  const safeAlerts = (!alerts || isServerError(alerts)) ? [] : alerts
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
@@ -44,7 +58,7 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
     )
   }
 
-  if (!alerts || alerts.length === 0) {
+  if (!safeAlerts || safeAlerts.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center rounded-sm border border-hairline bg-canvas-card p-8 text-center">
         <div className="mb-4 rounded-pill border border-hairline bg-canvas-soft p-3">
@@ -58,7 +72,7 @@ export default function AlertsList({ initialAlerts }: { initialAlerts: Alert[] }
 
   return (
     <div className="space-y-4 font-sans">
-      {alerts.map((alert) => (
+      {safeAlerts.map((alert: any) => (
         <div
           key={alert.id}
           className={`rounded-sm border ${

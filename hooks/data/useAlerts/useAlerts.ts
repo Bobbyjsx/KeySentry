@@ -9,11 +9,10 @@ export function useGetUnreadAlertsCount() {
   })
 }
 
-export function useGetAlerts(initialData?: Alert[]) {
+export function useGetAlerts() {
   return useQuery({
     queryKey: ["alerts"],
     queryFn: () => getAlertsAction(),
-    initialData,
     staleTime: 15 * 1000,
   })
 }

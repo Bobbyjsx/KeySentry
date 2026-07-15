@@ -8,16 +8,16 @@ import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { formatDateTime } from "@/lib/date"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
+import { isServerError, notifyServerError } from "@/lib/server-error"
 
 export default function DiscoveriesList({
-  initialKeys,
   keyId,
 }: {
-  initialKeys: ApiKeyDiscovery[]
   keyId?: string
 }) {
-  const { data: keys, isLoading } = useGetDiscoveries(keyId, initialKeys)
-  const uniqueProviders = Array.from(new Set((keys || []).map(k => k.provider).filter(Boolean))).sort()
+  const { data: keys, isLoading } = useGetDiscoveries(keyId)
+  const uniqueProviders = Array.from(new Set((!keys || isServerError(keys) ? [] : keys).map((k: any) => k.provider).filter(Boolean))).sort()
   const archiveMutation = useArchiveDiscovery()
   const deleteMutation = useDeleteDiscovery()
   const searchParams = useSearchParams()
@@ -42,6 +42,14 @@ export default function DiscoveriesList({
     }
   }, [searchParams])
 
+  useEffect(() => {
+    if (keys && isServerError(keys)) {
+      notifyServerError(keys)
+    }
+  }, [keys])
+
+  const safeKeys = (!keys || isServerError(keys)) ? [] : keys
+
   const handleSort = (field: keyof ApiKeyDiscovery) => {
     if (field === sortField) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc")
@@ -51,7 +59,7 @@ export default function DiscoveriesList({
     }
   }
 
-  const sortedKeys = [...(keys || [])].sort((a, b) => {
+  const sortedKeys = [...safeKeys].sort((a, b) => {
     const valA = a[sortField] ?? ""
     const valB = b[sortField] ?? ""
     if (valA < valB) return sortDirection === "asc" ? -1 : 1
@@ -102,7 +110,11 @@ export default function DiscoveriesList({
 
   const archiveKey = async (id: string) => {
     archiveMutation.mutate(id, {
-      onSuccess: () => {
+      onSuccess: (res) => {
+        if (isServerError(res)) {
+          notifyServerError(res)
+          return
+        }
         toast.success("API key has been archived")
       },
       onError: (error: any) => {
@@ -115,7 +127,11 @@ export default function DiscoveriesList({
     if (!confirm("Are you sure you want to delete this key? This action cannot be undone.")) return
 
     deleteMutation.mutate(id, {
-      onSuccess: () => {
+      onSuccess: (res) => {
+        if (isServerError(res)) {
+          notifyServerError(res)
+          return
+        }
         toast.success("API key has been permanently deleted")
       },
       onError: (error: any) => {
@@ -160,7 +176,7 @@ export default function DiscoveriesList({
     )
   }
 
-  if (!keys || keys.length === 0) {
+  if (!safeKeys || safeKeys.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center rounded-sm border border-hairline bg-canvas-card p-8 text-center">
         <div className="mb-4 rounded-pill border border-hairline bg-canvas-soft p-3">
@@ -179,13 +195,12 @@ export default function DiscoveriesList({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
           {/* Search Term */}
           <div>
-            <label className="block font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">Search</label>
-            <input
+            <Input
               type="text"
+              label="Search"
               placeholder="Search keys, repos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="mt-1.5 block w-full rounded-pill border border-hairline bg-canvas-soft py-1.5 px-3.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
             />
           </div>
 

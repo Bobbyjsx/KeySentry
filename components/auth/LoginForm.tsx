@@ -1,46 +1,63 @@
 "use client"
 
 import Link from "next/link"
+import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { useSupabase } from "./AuthProvider"
+import { signIn } from "next-auth/react"
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+})
+
+type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function LoginForm() {
-  const { supabase } = useSupabase()
   const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  })
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+  const onSubmit = async (data: LoginFormValues) => {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: data.email,
+        password: data.password,
       })
 
-      if (error) {
-        setError(error.message)
-        toast.error(error.message)
+      if (result?.error) {
+        setError("Invalid email or password")
+        toast.error("Invalid email or password")
         return
       }
 
       toast.success("Successfully authenticated")
+      router.push("/")
       router.refresh()
     } catch (err) {
       setError("An unexpected error occurred")
       toast.error("An unexpected error occurred")
       console.error(err)
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -63,28 +80,22 @@ export default function LoginForm() {
         </h1>
       </div>
 
-      <form onSubmit={handleLogin} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {error && (
           <div className="p-3.5 text-caption-mono-sm font-mono uppercase text-red-400 border border-red-500/20 bg-canvas-soft">
             {error}
           </div>
         )}
 
-        <div className="space-y-2">
-          <label htmlFor="email" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
-            Email Address
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@domain.com"
-            className="block w-full px-3.5 py-2.5 rounded-sm border border-hairline bg-canvas-soft text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
-          />
-        </div>
+        <Input
+          id="email"
+          type="email"
+          label="Email Address"
+          required
+          placeholder="name@domain.com"
+          error={errors.email?.message}
+          {...register("email")}
+        />
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -96,34 +107,32 @@ export default function LoginForm() {
             </Link>
           </div>
           
-          <div className="relative">
-            <input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="block w-full pl-3.5 pr-10 py-2.5 rounded-sm border border-hairline bg-canvas-soft text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+          <Input
+            id="password"
+            type={showPassword ? "text" : "password"}
+            required
+            placeholder="••••••••"
+            error={errors.password?.message}
+            {...register("password")}
+            rightNode={
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-gray-500 hover:text-white transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            }
+          />
         </div>
 
         <div className="pt-2">
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="flex justify-center items-center space-x-2 w-full rounded-pill border border-white bg-white px-5 py-2.5 font-mono text-xs uppercase text-canvas hover:bg-canvas hover:text-white transition-colors disabled:opacity-50"
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span>Signing in...</span>

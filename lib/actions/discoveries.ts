@@ -1,37 +1,63 @@
 "use server"
 
-import { keysToCamel } from "@/lib/case-transform"
-import { getDiscoveriesDAL, archiveDiscoveryDAL, deleteDiscoveryDAL } from "@/lib/dal/discoveries"
-import { requireAuth } from "@/lib/auth-server"
+import { api } from "@/lib/axios"
+import { isAxiosError } from "axios"
+import { throwServerActionError } from "../server-error"
 
 export interface ApiKeyDiscovery {
   id: string
-  userId: string
   keyHash: string
   provider: string
-  status: string
+  status: "active" | "expired" | "revoked" | "unknown"
   source: string
-  link: string | null
-  repository: string | null
-  riskLevel: string
   discoveredAt: string
-  isArchived: boolean
-  notes: string | null
+  riskLevel: "critical" | "high" | "medium" | "low"
+  link?: string
+  repository?: string
+  notes?: string
 }
 
 export async function getDiscoveriesAction(keyId?: string): Promise<ApiKeyDiscovery[]> {
-  const { user } = await requireAuth()
-  const data = await getDiscoveriesDAL(user.id, keyId)
-  return keysToCamel<ApiKeyDiscovery[]>(data)
+  try {
+    const url = keyId ? `/api/v1/discoveries?key=${keyId}` : "/api/v1/discoveries"
+    const { data } = await api.get(url)
+    return data
+  } catch (error) {
+    console.error("Error fetching discoveries:", error)
+    return throwServerActionError(error) as any
+  }
 }
 
-export async function archiveDiscoveryAction(id: string): Promise<ApiKeyDiscovery> {
-  const { user } = await requireAuth()
-  const data = await archiveDiscoveryDAL(user.id, id)
-  return keysToCamel<ApiKeyDiscovery>(data)
+export async function updateDiscoveryStatusAction(
+  id: string,
+  status: "open" | "resolved" | "false_positive",
+  notes?: string
+) {
+  try {
+    await api.patch(`/api/v1/discoveries/${id}`, { status, notes })
+    return { success: true }
+  } catch (error) {
+    console.error("Error updating discovery status:", error)
+    return throwServerActionError(error)
+  }
 }
 
-export async function deleteDiscoveryAction(id: string): Promise<void> {
-  const { user } = await requireAuth()
-  await deleteDiscoveryDAL(user.id, id)
+export async function archiveDiscoveryAction(id: string) {
+  try {
+    await api.post(`/api/v1/discoveries/${id}/archive`)
+    return { success: true }
+  } catch (error) {
+    console.error("Error archiving discovery:", error)
+    return throwServerActionError(error)
+  }
+}
+
+export async function deleteDiscoveryAction(id: string) {
+  try {
+    await api.delete(`/api/v1/discoveries/${id}`)
+    return { success: true }
+  } catch (error) {
+    console.error("Error deleting discovery:", error)
+    return throwServerActionError(error)
+  }
 }

@@ -1,20 +1,20 @@
 "use server"
 
-import { keysToCamel } from "@/lib/case-transform"
-import type { ApiKeyDiscovery } from "./discoveries"
-import { getAllDiscoveriesDAL } from "@/lib/dal/discoveries"
-import { getRecentScanHistoryDAL } from "@/lib/dal/scans"
-import { requireAuth } from "@/lib/auth-server"
+import { api } from "@/lib/axios"
+import { throwServerActionError } from "../server-error"
 
 export interface ScanHistoryAnalytics {
   id: string
-  userId: string
   scanDate: string
   keysFound: number
+  filesScanned: number
+  reposScanned: number
   sourcesScanned: number
   durationSeconds: number
   status: string
 }
+
+import type { ApiKeyDiscovery } from "./discoveries"
 
 export interface AnalyticsData {
   keys: ApiKeyDiscovery[]
@@ -22,16 +22,11 @@ export interface AnalyticsData {
 }
 
 export async function getAnalyticsDataAction(): Promise<AnalyticsData> {
-  const { user } = await requireAuth()
-
-  // Get API keys data via DAL
-  const keysData = await getAllDiscoveriesDAL(user.id)
-
-  // Get scan history data via DAL (last 30 scans)
-  const scanHistoryData = await getRecentScanHistoryDAL(user.id, 30)
-
-  return {
-    keys: keysToCamel<ApiKeyDiscovery[]>(keysData || []),
-    scanHistory: keysToCamel<ScanHistoryAnalytics[]>(scanHistoryData || []),
+  try {
+    const { data } = await api.get("/api/v1/analytics")
+    return data
+  } catch (error) {
+    console.error("Error fetching analytics data:", error)
+    return throwServerActionError(error) as any
   }
 }

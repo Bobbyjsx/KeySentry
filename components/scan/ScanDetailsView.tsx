@@ -9,33 +9,46 @@ import React, { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { formatDateTime, formatDuration } from "@/lib/date"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { isServerError, notifyServerError } from "@/lib/server-error"
 
 export default function ScanDetailsView({
   scanId,
-  initialData,
 }: {
   scanId: string
-  initialData: ScanDetails
 }) {
-  const { data: details, isLoading } = useGetScanDetails(scanId, initialData)
+  const { data: details, isLoading } = useGetScanDetails(scanId)
   const replayMutation = useStartScan()
   const router = useRouter()
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const activeDetails = details || initialData
-  const { scan, keys } = activeDetails
+  useEffect(() => {
+    if (details && isServerError(details)) {
+      notifyServerError(details)
+    }
+  }, [details])
 
-  const [liveDuration, setLiveDuration] = useState<number>(scan.durationSeconds)
+  const safeDetails = (!details || isServerError(details)) ? null : details
+  const activeDetails = safeDetails
+  
+  const [liveDuration, setLiveDuration] = useState<number>(0)
 
   useEffect(() => {
-    setLiveDuration(scan.durationSeconds)
-  }, [scan.durationSeconds])
+    if (activeDetails?.scan?.durationSeconds !== undefined) {
+      setLiveDuration(activeDetails.scan.durationSeconds)
+    }
+  }, [activeDetails?.scan?.durationSeconds])
 
   useEffect(() => {
-    if (scan.status !== "in_progress") return
+    if (!activeDetails?.scan) return
+    const isScanning = activeDetails.scan.status === "in_progress" || activeDetails.scan.status === "pending"
+    if (!isScanning) return
 
     const getElapsed = () => {
-      const start = new Date(scan.scanDate).getTime()
+      let dateStr = activeDetails.scan.scanDate
+      if (dateStr && !dateStr.endsWith("Z") && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+        dateStr += "Z"
+      }
+      const start = new Date(dateStr).getTime()
       return Math.max(0, Math.floor((Date.now() - start) / 1000))
     }
 
@@ -46,7 +59,16 @@ export default function ScanDetailsView({
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [scan.status, scan.scanDate])
+  }, [activeDetails?.scan?.status, activeDetails?.scan?.scanDate])
+
+  if (!activeDetails) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-sm border border-hairline bg-canvas-card p-6">
+        <Loader2 className="h-6 w-6 animate-spin text-white" />
+      </div>
+    )
+  }
+  const { scan, keys } = activeDetails
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -56,12 +78,16 @@ export default function ScanDetailsView({
   }
 
   const handleReplayScan = () => {
-    if (!scan.sources) return
+    if (!scan.trigger) return
     toast.info("Replaying scan configuration...")
     replayMutation.mutate(
-      { sources: scan.sources, scanDepth: "shallow" },
+      { target: scan.trigger },
       {
         onSuccess: (data) => {
+          if (isServerError(data)) {
+            notifyServerError(data)
+            return
+          }
           toast.success("Scan replayed in the background! Redirecting...")
           const scanUrl = `/scan/${data.scanId}`
           router.push(scanUrl)
@@ -83,6 +109,7 @@ export default function ScanDetailsView({
       case "completed":
         return <span className="rounded-pill border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs font-mono uppercase text-green-400">Completed</span>
       case "in_progress":
+      case "pending":
         return (
           <span className="flex items-center space-x-1.5 rounded-pill border border-accent-twilight/20 bg-accent-twilight/10 px-3 py-1 text-xs font-mono uppercase text-accent-twilight">
             <Loader2 className="h-3 w-3 animate-spin" />
@@ -143,7 +170,7 @@ export default function ScanDetailsView({
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          {scan.status !== "in_progress" && (
+          {scan.status !== "in_progress" && scan.status !== "pending" && (
             <button
               onClick={handleReplayScan}
               disabled={replayMutation.isPending}
@@ -162,10 +189,10 @@ export default function ScanDetailsView({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Date Run */}
         <div className="bg-canvas-card border border-hairline p-5 rounded-sm">
-          <div className="text-caption-mono-sm font-mono uppercase text-gray-500">Scan Date</div>
+          <div className="text-caption-mono-sm font-mono uppercase text-gray-500 whitespace-nowrap">Scan Date</div>
           <div className="mt-2 text-body-sm font-mono uppercase text-white truncate">
             {formatDateTime(scan.scanDate)}
           </div>
@@ -173,47 +200,47 @@ export default function ScanDetailsView({
 
         {/* Sources Count */}
         <div className="bg-canvas-card border border-hairline p-5 rounded-sm">
-          <div className="text-caption-mono-sm font-mono uppercase text-gray-500">Sources Scanned</div>
-          <div className="mt-2 flex items-baseline space-x-1">
-            <span className="text-display-xs font-normal text-white tracking-display-sm">{scan.sourcesScanned}</span>
+          <div className="text-caption-mono-sm font-mono uppercase text-gray-500 whitespace-nowrap">Sources Scanned</div>
+          <div className="mt-2 flex items-baseline space-x-1 whitespace-nowrap">
+            <span className="text-display-xs font-normal text-white tracking-display-sm">{scan.sourcesScanned}</span>{" "}
             <span className="text-xs text-gray-500 font-mono uppercase">target(s)</span>
           </div>
         </div>
 
         {/* Repos Scanned */}
         <div className="bg-canvas-card border border-hairline p-5 rounded-sm">
-          <div className="text-caption-mono-sm font-mono uppercase text-gray-500">Repositories</div>
-          <div className="mt-2 flex items-baseline space-x-1">
-            <span className="text-display-xs font-normal text-white tracking-display-sm">{scan.reposScanned ?? 0}</span>
+          <div className="text-caption-mono-sm font-mono uppercase text-gray-500 whitespace-nowrap">Repositories</div>
+          <div className="mt-2 flex items-baseline space-x-1 whitespace-nowrap">
+            <span className="text-display-xs font-normal text-white tracking-display-sm">{scan.reposScanned ?? 0}</span>{" "}
             <span className="text-xs text-gray-500 font-mono uppercase">repo(s)</span>
           </div>
         </div>
 
         {/* Files Scanned */}
         <div className="bg-canvas-card border border-hairline p-5 rounded-sm">
-          <div className="text-caption-mono-sm font-mono uppercase text-gray-500">Files Scanned</div>
-          <div className="mt-2 flex items-baseline space-x-1">
-            <span className="text-display-xs font-normal text-white tracking-display-sm">{scan.filesScanned ?? 0}</span>
+          <div className="text-caption-mono-sm font-mono uppercase text-gray-500 whitespace-nowrap">Files Scanned</div>
+          <div className="mt-2 flex items-baseline space-x-1 whitespace-nowrap">
+            <span className="text-display-xs font-normal text-white tracking-display-sm">{scan.filesScanned ?? 0}</span>{" "}
             <span className="text-xs text-gray-500 font-mono uppercase">file(s)</span>
           </div>
         </div>
 
         {/* Duration */}
         <div className="bg-canvas-card border border-hairline p-5 rounded-sm">
-          <div className="text-caption-mono-sm font-mono uppercase text-gray-500">Duration</div>
-          <div className="mt-2 flex items-baseline space-x-1">
-            <span className="text-display-xs font-normal text-white tracking-display-sm">{formatDuration(liveDuration)}</span>
+          <div className="text-caption-mono-sm font-mono uppercase text-gray-500 whitespace-nowrap">Duration</div>
+          <div className="mt-2 flex items-baseline space-x-1 whitespace-nowrap">
+            <span className="text-display-xs font-normal text-white tracking-display-sm">{formatDuration(liveDuration)}</span>{" "}
             <span className="text-xs text-gray-500 font-mono uppercase">sec(s)</span>
           </div>
         </div>
 
         {/* Keys Found */}
         <div className="bg-canvas-card border border-hairline p-5 rounded-sm">
-          <div className="text-caption-mono-sm font-mono uppercase text-gray-500">Keys Discovered</div>
-          <div className="mt-2 flex items-baseline space-x-1">
+          <div className="text-caption-mono-sm font-mono uppercase text-gray-500 whitespace-nowrap">Keys Discovered</div>
+          <div className="mt-2 flex items-baseline space-x-1 whitespace-nowrap">
             <span className={`text-display-xs font-normal tracking-display-sm ${scan.keysFound > 0 ? "text-accent-sunset animate-pulse" : "text-green-400"}`}>
               {scan.keysFound}
-            </span>
+            </span>{" "}
             <span className="text-xs text-gray-500 font-mono uppercase">exposed</span>
           </div>
         </div>
@@ -224,7 +251,7 @@ export default function ScanDetailsView({
         <h2 className="text-caption-mono font-mono uppercase text-white mb-4 tracking-caption-mono">Scan Scope</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {scan.sources && scan.sources.length > 0 ? (
-            scan.sources.map((src, index) => {
+            scan.sources.map((src: any, index: number) => {
               const isRepo = src.value.includes("/")
               return (
                 <div key={index} className="flex items-center space-x-3 rounded-sm border border-hairline bg-canvas-soft p-4">
@@ -252,7 +279,15 @@ export default function ScanDetailsView({
       <div className="bg-canvas-card border border-hairline p-6 rounded-sm">
         <h2 className="text-caption-mono font-mono uppercase text-white mb-4 tracking-caption-mono">Keys Discovered In This Scan</h2>
 
-        {keys.length === 0 ? (
+        {scan.status === "in_progress" || scan.status === "pending" ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-accent-breeze mb-4" />
+            <h3 className="text-display-xs font-normal text-white mb-1">Scan in Progress</h3>
+            <p className="max-w-md text-body-sm text-gray-400">
+              Please wait while we thoroughly inspect the target repositories for exposed credentials. This might take a few minutes.
+            </p>
+          </div>
+        ) : keys.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-pill border border-hairline bg-canvas-soft text-green-400 mb-4 animate-pulse">
               <Shield className="h-5 w-5" />
@@ -288,26 +323,26 @@ export default function ScanDetailsView({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {keys.map((key) => (
-                  <TableRow key={key.id} className="border-b border-hairline hover:bg-canvas-soft/40 transition-colors">
-                    <TableCell className="px-4 py-3 text-body-sm font-mono text-white">
+                {keys.map((key: any) => (
+                  <TableRow key={key.id} className="border-b border-hairline hover:bg-canvas-soft/20 transition-colors">
+                    <TableCell className="px-4 py-3 text-body-sm font-mono text-white whitespace-nowrap">
                       {key.keyHash}
                     </TableCell>
-                    <TableCell className="px-4 py-3">
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
                       <span className="rounded-pill border border-accent-twilight/20 bg-accent-twilight/10 px-2 py-0.5 text-xs font-mono uppercase text-accent-twilight">
                         {key.provider}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-body-sm text-gray-400 font-mono">
+                    <TableCell className="px-4 py-3 text-body-sm text-gray-400 font-mono whitespace-nowrap">
                       {key.repository || "N/A"}
                     </TableCell>
-                    <TableCell className="px-4 py-3">
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
                       <span className="inline-flex items-center rounded-pill border border-accent-sunset/20 bg-accent-sunset/10 px-2.5 py-0.5 text-xs font-mono uppercase text-accent-sunset">
                         <AlertTriangle className="h-3 w-3 mr-1" />
                         <span>High Risk</span>
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3">
+                    <TableCell className="px-4 py-3 whitespace-nowrap">
                       <span className={`rounded-pill px-2.5 py-0.5 text-xs font-mono uppercase ${
                         key.status === "active"
                           ? "border border-green-500/20 bg-green-500/10 text-green-400"
@@ -316,7 +351,7 @@ export default function ScanDetailsView({
                         {key.status}
                       </span>
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-right">
+                    <TableCell className="px-4 py-3 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end space-x-1.5">
                         <button
                           onClick={() => copyToClipboard(key.keyHash, key.id)}

@@ -1,7 +1,6 @@
 'use client'
 
-import { useSupabase } from './AuthProvider'
-import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
 import { useState } from 'react'
 
 interface LogoutButtonProps {
@@ -10,19 +9,14 @@ interface LogoutButtonProps {
 }
 
 export default function LogoutButton({ className, children }: LogoutButtonProps) {
-  const { supabase } = useSupabase()
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleLogout = async () => {
     setIsLoading(true)
-    
     try {
-      await supabase.auth.signOut()
-      router.refresh()
-      router.push('/')
+      await signOut({ callbackUrl: '/auth/login' })
     } catch (error) {
-      console.error('Error signing out:', error)
+      console.error('Error logging out:', error)
     } finally {
       setIsLoading(false)
     }

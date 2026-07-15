@@ -6,11 +6,10 @@ import {
   type ApiKeyDiscovery,
 } from "@/lib/actions/discoveries"
 
-export function useGetDiscoveries(keyId?: string, initialData?: ApiKeyDiscovery[]) {
+export function useGetDiscoveries(keyId?: string) {
   return useQuery({
     queryKey: ["discoveries", keyId || "all"],
     queryFn: () => getDiscoveriesAction(keyId),
-    initialData,
     staleTime: 15 * 1000, // 15 seconds stale time
   })
 }

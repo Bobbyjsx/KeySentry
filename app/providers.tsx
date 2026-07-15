@@ -5,7 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import type React from "react"
 import { useState } from "react"
 import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/component"
+import { signOut } from "next-auth/react"
 
 let isRedirecting = false
 
@@ -13,11 +13,10 @@ const handleUnauthorized = () => {
   if (isRedirecting) return
   isRedirecting = true
 
-  const supabase = createClient()
-  supabase.auth.signOut().finally(() => {
+  signOut({ redirect: false }).finally(() => {
     toast.error("Your session has expired. Redirecting to login...")
     setTimeout(() => {
-      window.location.href = "/auth/login"
+      window.location.href = "/login"
     }, 1500)
   })
 }

@@ -1,34 +1,52 @@
 "use client"
 
 import { useState } from "react"
+import { Input } from "@/components/ui/input"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useResetPassword } from "@/hooks/data/useAuth/useAuth"
 import { notifyServerError, isServerError } from "@/lib/server-error"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+
+const resetPasswordSchema = z.object({
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+})
+
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>
 
 export default function ResetPasswordForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token") || ""
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
   const resetPasswordMutation = useResetPassword()
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  })
+
   const isLoading = resetPasswordMutation.isPending
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const onSubmit = async (data: ResetPasswordFormValues) => {
     setError(null)
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      toast.error("Passwords do not match")
-      return
-    }
 
     if (!token) {
       setError("Missing reset token. Please request a new password reset link.")
@@ -37,7 +55,7 @@ export default function ResetPasswordForm() {
     }
 
     resetPasswordMutation.mutate(
-      { password, token },
+      { password: data.password, token },
       {
         onSuccess: (result) => {
           if (isServerError(result)) {
@@ -80,62 +98,50 @@ export default function ResetPasswordForm() {
         </p>
       </div>
 
-      <form onSubmit={handleResetPassword} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {error && (
           <div className="p-3.5 text-caption-mono-sm font-mono uppercase text-red-400 border border-red-500/20 bg-canvas-soft">
             {error}
           </div>
         )}
 
-        <div className="space-y-2">
-          <label htmlFor="password" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
-            New Password
-          </label>
-          <div className="relative">
-            <input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="block w-full pl-3.5 pr-10 py-2.5 rounded-sm border border-hairline bg-canvas-soft text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
-            />
+        <Input
+          id="password"
+          type={showPassword ? "text" : "password"}
+          label="New Password"
+          required
+          placeholder="••••••••"
+          error={errors.password?.message}
+          {...register("password")}
+          rightNode={
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
+              className="text-gray-500 hover:text-white transition-colors"
             >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
-          </div>
-        </div>
+          }
+        />
 
-        <div className="space-y-2">
-          <label htmlFor="confirmPassword" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
-            Confirm New Password
-          </label>
-          <div className="relative">
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type={showConfirmPassword ? "text" : "password"}
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              className="block w-full pl-3.5 pr-10 py-2.5 rounded-sm border border-hairline bg-canvas-soft text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
-            />
+        <Input
+          id="confirmPassword"
+          type={showConfirmPassword ? "text" : "password"}
+          label="Confirm New Password"
+          required
+          placeholder="••••••••"
+          error={errors.confirmPassword?.message}
+          {...register("confirmPassword")}
+          rightNode={
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-3.5 text-gray-500 hover:text-white transition-colors"
+              className="text-gray-500 hover:text-white transition-colors"
             >
               {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
-          </div>
-        </div>
+          }
+        />
 
         <div className="pt-2">
           <button
