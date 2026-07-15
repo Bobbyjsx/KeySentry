@@ -78,7 +78,10 @@ export default function ScanDetailsView({
   }
 
   const handleReplayScan = () => {
-    if (!scan.trigger) return
+    if (!scan.trigger || scan.trigger === "manual") {
+      toast.error("Cannot replay this scan because the target source is missing.")
+      return
+    }
     toast.info("Replaying scan configuration...")
     replayMutation.mutate(
       { target: scan.trigger },
@@ -170,7 +173,7 @@ export default function ScanDetailsView({
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          {scan.status !== "in_progress" && scan.status !== "pending" && (
+          {scan.status !== "in_progress" && scan.status !== "pending" && scan.trigger !== "manual" && (
             <button
               onClick={handleReplayScan}
               disabled={replayMutation.isPending}
