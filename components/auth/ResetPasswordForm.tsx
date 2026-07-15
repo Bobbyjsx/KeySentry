@@ -1,51 +1,61 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { useSupabase } from "./AuthProvider"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Shield, Eye, EyeOff, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { useResetPassword } from "@/hooks/data/useAuth/useAuth"
+import { notifyServerError, isServerError } from "@/lib/server-error"
 
 export default function ResetPasswordForm() {
-  const { supabase } = useSupabase()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const token = searchParams.get("token") || ""
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  
+  const resetPasswordMutation = useResetPassword()
+  const isLoading = resetPasswordMutation.isPending
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setError(null)
 
     if (password !== confirmPassword) {
       setError("Passwords do not match")
       toast.error("Passwords do not match")
-      setIsLoading(false)
       return
     }
 
-    try {
-      const { error } = await supabase.auth.updateUser({ password })
-
-      if (error) {
-        setError(error.message)
-        toast.error(error.message)
-        return
-      }
-
-      toast.success("Password updated successfully!")
-      router.push("/auth/login?reset=success")
-    } catch (err) {
-      setError("An unexpected error occurred")
-      toast.error("An unexpected error occurred")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
+    if (!token) {
+      setError("Missing reset token. Please request a new password reset link.")
+      toast.error("Missing reset token")
+      return
     }
+
+    resetPasswordMutation.mutate(
+      { password, token },
+      {
+        onSuccess: (result) => {
+          if (isServerError(result)) {
+            const errMsg = notifyServerError(result)
+            setError(Array.isArray(errMsg) ? errMsg[0] : errMsg)
+            return
+          }
+
+          toast.success("Password updated successfully!")
+          router.push("/login?reset=success")
+        },
+        onError: (err) => {
+          setError("An unexpected error occurred")
+          toast.error("An unexpected error occurred")
+          console.error(err)
+        }
+      }
+    )
   }
 
   return (

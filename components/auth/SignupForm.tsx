@@ -1,63 +1,72 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { useSupabase } from "./AuthProvider"
-import { Shield, Eye, EyeOff, Loader2, Sparkles } from "lucide-react"
-import { toast } from "sonner"
+import { useSignup } from "@/hooks/data/useAuth/useAuth";
+import { isServerError, notifyServerError } from "@/lib/server-error";
+import { Eye, EyeOff, Loader2, Shield } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export default function SignupForm() {
-  const { supabase } = useSupabase()
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const signupMutation = useSignup();
+  const isLoading = signupMutation.isPending;
 
   const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-    setMessage(null)
+    e.preventDefault();
+    setError(null);
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      toast.error("Passwords do not match")
-      setIsLoading(false)
-      return
+      setError("Passwords do not match");
+      toast.error("Passwords do not match");
+      return;
     }
 
-    try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+    signupMutation.mutate(
+      { email, password },
+      {
+        onSuccess: async (result) => {
+          if (isServerError(result)) {
+            const errMsg = notifyServerError(result);
+            setError(Array.isArray(errMsg) ? errMsg[0] : errMsg);
+            return;
+          }
+
+          toast.success("Account created successfully!");
+
+          // Automatically log them in after signup using NextAuth
+          // const signInResult = await signIn("credentials", {
+          //   email,
+          //   password,
+          //   redirect: false,
+          // });
+
+          // if (signInResult?.error) {
+          //   toast.error(
+          //     "Signup successful, but failed to log in automatically. Please log in.",
+          //   );
+          //   router.push("/login");
+          // } else {
+          //   router.push("/");
+          //   router.refresh();
+          // }
         },
-      })
-
-      if (error) {
-        setError(error.message)
-        toast.error(error.message)
-        return
-      }
-
-      const successMsg = "Verification email has been sent. Please check your inbox."
-      setMessage(successMsg)
-      toast.success(successMsg)
-    } catch (err) {
-      setError("An unexpected error occurred")
-      toast.error("An unexpected error occurred")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+        onError: (err) => {
+          setError("An unexpected error occurred");
+          toast.error("An unexpected error occurred");
+          console.error(err);
+        },
+      },
+    );
+  };
 
   return (
     <div className="w-full max-w-md p-8 bg-canvas-card border border-hairline rounded-sm space-y-8 font-sans relative overflow-hidden">
@@ -85,15 +94,11 @@ export default function SignupForm() {
           </div>
         )}
 
-        {message && (
-          <div className="p-3.5 text-caption-mono-sm font-mono uppercase text-accent-breeze border border-accent-breeze/20 bg-canvas-soft flex items-start space-x-2">
-            <Sparkles className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <span>{message}</span>
-          </div>
-        )}
-
         <div className="space-y-2">
-          <label htmlFor="email" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
+          <label
+            htmlFor="email"
+            className="block text-caption-mono-sm font-mono uppercase text-gray-400"
+          >
             Email Address
           </label>
           <input
@@ -109,7 +114,10 @@ export default function SignupForm() {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="password" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
+          <label
+            htmlFor="password"
+            className="block text-caption-mono-sm font-mono uppercase text-gray-400"
+          >
             Password
           </label>
           <div className="relative">
@@ -134,7 +142,10 @@ export default function SignupForm() {
         </div>
 
         <div className="space-y-2">
-          <label htmlFor="confirmPassword" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
+          <label
+            htmlFor="confirmPassword"
+            className="block text-caption-mono-sm font-mono uppercase text-gray-400"
+          >
             Confirm Password
           </label>
           <div className="relative">
@@ -179,11 +190,14 @@ export default function SignupForm() {
       <div className="text-center pt-2">
         <p className="text-xs text-gray-500">
           Already have an account?{" "}
-          <Link href="/auth/login" className="text-caption-mono-sm font-mono uppercase text-gray-400 hover:text-white transition-colors underline pl-1">
+          <Link
+            href="/auth/login"
+            className="text-caption-mono-sm font-mono uppercase text-gray-400 hover:text-white transition-colors underline pl-1"
+          >
             Sign In
           </Link>
         </p>
       </div>
     </div>
-  )
+  );
 }

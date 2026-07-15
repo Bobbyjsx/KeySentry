@@ -90,13 +90,13 @@ This section outlines the standards and architecture required for the KeySentry 
 
 ## 🏗️ Core Way of Working
 
-All data must move in this order:
-1. **UI Component:** Uses a custom hook.
-2. **Custom Hook (`src/hooks/data/use[Domain]/[resource].ts`):** Uses React Query for caching.
-3. **Server Action (`src/lib/actions/[domain].ts` or similar):** Securely talks to the database.
-4. **Logic Engine (`src/lib/core/[manager].ts` or similar):** Pure logic and Supabase code.
+All data fetching and mutations must follow this strict pattern:
+1. **UI Component:** Never calls server actions directly. Uses a custom TanStack React Query hook.
+2. **Custom Hook (`hooks/data/use[Domain]/[resource].ts`):** Uses React Query (`useQuery`, `useMutation`) for caching and state management, and wraps the Server Action.
+3. **Server Action (`lib/actions/[domain].ts`):** Acts as the bridge to the Python backend API.
+4. **Global API Client (`lib/axios.ts`):** Server Actions must ONLY use the globally configured `api` Axios instance. DO NOT create custom fetch wrappers or `fetchApi` utilities. The global Axios client automatically injects the necessary Auth Bearer tokens (via NextAuth) and Atlas keys via request interceptors, and it intercepts responses to refresh tokens on 401s and handle logouts.
 
-**Rule:** DO NOT use `fetch()` to `/api` routes to create, read, update, or delete data (except for external webhooks or integrations like actual code scanning triggers if appropriate). Create a Data Access Layer (DAL) so that users can only access their own data, and all Supabase requests go through that layer. Enforce RLS on the database.
+**Rule:** DO NOT use direct `fetch()` calls or intermediate fetch wrappers. All backend communication goes through the global `axios` instance in Server Actions, which are then consumed exclusively by React Query hooks in the UI.
 
 ---
 

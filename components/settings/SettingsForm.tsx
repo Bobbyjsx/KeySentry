@@ -4,14 +4,15 @@ import type React from "react"
 import { Moon, Save, Settings, Sun, Loader2, ShieldAlert, Search, Eye, EyeOff } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useGetSettings, useSaveSettings } from "@/hooks/data/useSettings/useSettings"
-import { useGetPatterns } from "@/hooks/data/usePatterns/usePatterns"
 import type { UserSettings } from "@/lib/actions/settings"
-import { useSupabase } from "@/components/auth/AuthProvider"
+import { useSession } from "next-auth/react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
+import { notifyServerError, isServerError } from "@/lib/server-error"
 
 export default function SettingsForm() {
-  const { user } = useSupabase()
+  const { data: session } = useSession()
+  const user = session?.user as any
   const [showToken, setShowToken] = useState(false)
   const defaultSettings: UserSettings = {
     emailAlerts: true,
@@ -24,18 +25,7 @@ export default function SettingsForm() {
   const { data: initialSettings, isLoading } = useGetSettings()
   const saveMutation = useSaveSettings()
 
-  const { data: patterns, isLoading: patternsLoading } = useGetPatterns()
-  const [patternSearch, setPatternSearch] = useState("")
-
   const [settings, setSettings] = useState<UserSettings>(defaultSettings)
-
-  const filteredPatterns = patterns?.filter((p) => {
-    return (
-      p.name.toLowerCase().includes(patternSearch.toLowerCase()) ||
-      p.provider.toLowerCase().includes(patternSearch.toLowerCase()) ||
-      p.regex.toLowerCase().includes(patternSearch.toLowerCase())
-    )
-  })
 
   useEffect(() => {
     if (initialSettings) {
@@ -86,7 +76,11 @@ export default function SettingsForm() {
     }
 
     saveMutation.mutate(settings, {
-      onSuccess: () => {
+      onSuccess: (result) => {
+        if (isServerError(result)) {
+          notifyServerError(result)
+          return
+        }
         toast.success("Settings saved successfully")
       },
       onError: (error: any) => {
@@ -271,93 +265,6 @@ export default function SettingsForm() {
         </form>
       </div>
 
-      <div className="rounded-sm border border-hairline bg-canvas-card p-6 sm:p-8">
-        <div className="mb-6">
-          <h2 className="flex items-center font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">
-            <ShieldAlert className="mr-2 h-4 w-4 text-white" />
-            Exposed Key Detection Registry
-          </h2>
-          <p className="mt-1 text-sm text-gray-400">
-            View the regular expression patterns currently used to scan repositories for sensitive credentials.
-          </p>
-        </div>
-
-        {/* Search */}
-        <div className="mb-4 flex items-center space-x-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-3 h-4 w-4 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Search patterns by provider, rule name, or regex..."
-              value={patternSearch}
-              onChange={(e) => setPatternSearch(e.target.value)}
-              className="block w-full rounded-pill border border-hairline bg-canvas-soft pl-10 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* Patterns List */}
-        {patternsLoading ? (
-          <div className="flex h-32 items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-white" />
-          </div>
-        ) : filteredPatterns && filteredPatterns.length > 0 ? (
-          <div className="max-h-96 overflow-y-auto rounded-sm border border-hairline bg-canvas-soft/10">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-hairline hover:bg-transparent bg-canvas-soft/30 sticky top-0 z-10">
-                  <TableHead className="px-4 py-2 font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">
-                    Provider
-                  </TableHead>
-                  <TableHead className="px-4 py-2 font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">
-                    Rule Name
-                  </TableHead>
-                  <TableHead className="px-4 py-2 font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">
-                    Severity / Risk
-                  </TableHead>
-                  <TableHead className="px-4 py-2 font-mono text-[10px] uppercase text-gray-500 tracking-caption-mono-sm">
-                    Regex Pattern
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPatterns.map((p) => (
-                  <TableRow key={p.id} className="border-hairline hover:bg-canvas-soft/20 transition-colors">
-                    <TableCell className="px-4 py-2.5 font-mono text-xs text-white">
-                      {p.provider}
-                    </TableCell>
-                    <TableCell className="px-4 py-2.5 text-xs text-gray-300">
-                      {p.name}
-                    </TableCell>
-                    <TableCell className="px-4 py-2.5">
-                      <span
-                        className={`rounded-pill border px-2 py-0.5 font-mono text-[10px] uppercase ${
-                          p.riskLevel === "critical"
-                            ? "border-red-500/20 text-red-400"
-                            : p.riskLevel === "high"
-                              ? "border-accent-sunset/20 text-accent-sunset"
-                              : p.riskLevel === "medium"
-                                ? "border-accent-twilight/20 text-accent-twilight"
-                                : "border-accent-breeze/20 text-accent-breeze"
-                        }`}
-                      >
-                        {p.riskLevel}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-2.5 font-mono text-xs text-gray-400 break-all max-w-xs truncate" title={p.regex}>
-                      {p.regex}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="flex h-32 flex-col items-center justify-center rounded-sm bg-canvas-soft/10 border border-hairline text-gray-500 font-mono text-xs uppercase tracking-wider">
-            <span>No patterns found</span>
-          </div>
-        )}
-      </div>
     </div>
   )
 }

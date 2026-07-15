@@ -2,44 +2,41 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { useSupabase } from "./AuthProvider"
 import { Shield, Key, Loader2, Sparkles } from "lucide-react"
 import { toast } from "sonner"
+import { useForgotPassword } from "@/hooks/data/useAuth/useAuth"
+import { notifyServerError, isServerError } from "@/lib/server-error"
 
 export default function ForgotPasswordForm() {
-  const { supabase } = useSupabase()
   const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const forgotPasswordMutation = useForgotPassword()
+  const isLoading = forgotPasswordMutation.isPending
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setError(null)
     setMessage(null)
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      })
+    forgotPasswordMutation.mutate(email, {
+      onSuccess: (result) => {
+        if (isServerError(result)) {
+          const errMsg = notifyServerError(result)
+          setError(Array.isArray(errMsg) ? errMsg[0] : errMsg)
+          return
+        }
 
-      if (error) {
-        setError(error.message)
-        toast.error(error.message)
-        return
+        const successMsg = "Check your email for the password reset link"
+        setMessage(successMsg)
+        toast.success(successMsg)
+      },
+      onError: (err) => {
+        setError("An unexpected error occurred")
+        toast.error("An unexpected error occurred")
+        console.error(err)
       }
-
-      const successMsg = "Check your email for the password reset link"
-      setMessage(successMsg)
-      toast.success(successMsg)
-    } catch (err) {
-      setError("An unexpected error occurred")
-      toast.error("An unexpected error occurred")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
+    })
   }
 
   return (

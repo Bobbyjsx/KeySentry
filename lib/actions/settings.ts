@@ -1,10 +1,7 @@
 "use server"
 
-import { keysToCamel, keysToSnake } from "@/lib/case-transform"
-import { encrypt, decrypt } from "@/lib/crypto"
-import { getSettingsDAL, insertSettingsDAL, updateSettingsDAL } from "@/lib/dal/settings"
-import { requireAuth } from "@/lib/auth-server"
 import { z } from "zod"
+import { api } from "@/lib/axios"
 
 export interface UserSettings {
   id?: string
@@ -28,78 +25,37 @@ const SettingsSchema = z.object({
   theme: z.enum(["light", "dark", "system"]).optional(),
 })
 
-export async function getSettings(): Promise<UserSettings | null> {
-  const { user } = await requireAuth()
+import { throwServerActionError } from "../server-error"
 
-  const data = await getSettingsDAL(user.id)
-  if (!data) {
-    return null
-  }
-
-  const settings = keysToCamel<UserSettings>(data)
-  if (settings.githubToken) {
-    settings.githubToken = decrypt(settings.githubToken)
-  }
-  return settings
-}
-
-export interface SaveSettingsResult {
-  success: boolean
-  data?: UserSettings
-  error?: string
-}
-
-export async function saveSettingsAction(settings: Partial<UserSettings>): Promise<SaveSettingsResult> {
+export async function getSettingsAction(): Promise<UserSettings> {
   try {
-    const { user } = await requireAuth()
+    const { data } = await api.get("/api/v1/settings")
+    return data
+  } catch (err) {
+    console.error("Error in getSettingsAction:", err)
+    return {
+      emailAlerts: true,
+      slackWebhook: null,
+      githubToken: null,
+      scanFrequency: "daily",
+      theme: "dark",
+    }
+  }
+}
 
-    // Enforce schema validation
+export async function saveSettingsAction(settings: Partial<UserSettings>) {
+  try {
     const validatedSettings = SettingsSchema.parse(settings)
 
-    // Normalize empty strings to null
     if (validatedSettings.slackWebhook === "") {
       validatedSettings.slackWebhook = null
     }
 
-    const dbData = keysToSnake({
-      ...validatedSettings,
-      userId: user.id,
-      updatedAt: new Date().toISOString(),
-    })
+    const { data } = await api.patch("/api/v1/settings", validatedSettings)
 
-    if (dbData.github_token) {
-      dbData.github_token = encrypt(dbData.github_token)
-    }
-
-    let res: UserSettings
-    if (dbData.id) {
-      const data = await updateSettingsDAL(user.id, dbData.id, dbData)
-      res = keysToCamel<UserSettings>(data)
-    } else {
-      const data = await insertSettingsDAL(user.id, {
-        ...dbData,
-        created_at: new Date().toISOString(),
-      })
-      res = keysToCamel<UserSettings>(data)
-    }
-
-    if (res.githubToken) {
-      res.githubToken = decrypt(res.githubToken)
-    }
-
-    return {
-      success: true,
-      data: res
-    }
-  } catch (err: any) {
+    return data
+  } catch (err) {
     console.error("Error in saveSettingsAction:", err)
-    let errorMessage = err.message || "Failed to save settings"
-    if (err instanceof z.ZodError) {
-      errorMessage = err.errors.map(e => `${e.path.join(".")}: ${e.message}`).join(", ")
-    }
-    return {
-      success: false,
-      error: errorMessage
-    }
+    return throwServerActionError(err)
   }
 }

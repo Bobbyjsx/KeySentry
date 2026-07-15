@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { getSettings, saveSettingsAction, type UserSettings } from "@/lib/actions/settings"
+import { getSettingsAction, saveSettingsAction, type UserSettings } from "@/lib/actions/settings"
+import { isServerError } from "@/lib/server-error"
 
 export function useGetSettings() {
   return useQuery({
     queryKey: ["settings"],
-    queryFn: getSettings,
+    queryFn: getSettingsAction,
     staleTime: 5 * 60 * 1000, // 5 minutes cache
   })
 }
@@ -14,14 +15,12 @@ export function useSaveSettings() {
 
   return useMutation({
     mutationFn: async (settings: Partial<UserSettings>) => {
-      const result = await saveSettingsAction(settings)
-      if (!result.success) {
-        throw new Error(result.error || "Failed to save settings")
-      }
-      return result.data!
+      return await saveSettingsAction(settings)
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(["settings"], data)
+      if (!isServerError(data)) {
+        queryClient.setQueryData(["settings"], data)
+      }
     },
   })
 }
