@@ -1,13 +1,12 @@
 import { cache } from "react"
-import { createClient } from "@/lib/supabase/server"
+import { auth } from "@/auth"
 
 export const requireAuth = cache(async () => {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const session = await auth()
 
-  if (!user) {
+  if (!session?.user) {
     throw new Error("Unauthorized")
   }
 
-  return { user, supabase }
+  return { user: session.user, session }
 })

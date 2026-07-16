@@ -1,37 +1,53 @@
-"use server"
+"use server";
 
-import { keysToCamel } from "@/lib/case-transform"
-import { getAlertsDAL, markAlertAsReadDAL, getUnreadAlertsCountDAL } from "@/lib/dal/alerts"
-import { requireAuth } from "@/lib/auth-server"
+import { api } from "@/lib/axios";
+import { throwServerActionError } from "../server-error";
 
 export interface Alert {
-  id: string
-  userId: string
-  apiKeyId: string | null
-  title: string
-  description: string
-  severity: string
-  isRead: boolean
-  createdAt: string
+  id: string;
+  title: string;
+  description: string;
+  severity: "critical" | "high" | "medium" | "low";
+  isRead: boolean;
+  createdAt: string;
+  apiKeyId?: string;
 }
 
 export async function getAlertsAction(): Promise<Alert[]> {
-  const { user } = await requireAuth()
-  const data = await getAlertsDAL(user.id)
-  return keysToCamel<Alert[]>(data)
-}
-
-export async function markAlertAsReadAction(id: string): Promise<Alert> {
-  const { user } = await requireAuth()
-  const data = await markAlertAsReadDAL(user.id, id)
-  return keysToCamel<Alert>(data)
-}
-
-export async function getUnreadAlertsCountAction(): Promise<number> {
   try {
-    const { user } = await requireAuth()
-    return await getUnreadAlertsCountDAL(user.id)
-  } catch {
-    return 0
+    const { data } = await api.get("/api/v1/alerts");
+    return data;
+  } catch (error) {
+    console.error("Error fetching alerts:", error);
+    return throwServerActionError(error) as any;
+  }
+}
+
+export async function getUnreadAlertsCountAction() {
+  try {
+    const { data } = await api.get("/api/v1/alerts/unread-count");
+    return data?.count || 0;
+  } catch (error) {
+    return throwServerActionError(error) as any;
+  }
+}
+
+export async function markAlertAsReadAction(alertId: string) {
+  try {
+    await api.post(`/api/v1/alerts/${alertId}/read`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error marking alert as read:", error);
+    return throwServerActionError(error) as any;
+  }
+}
+
+export async function markAllAlertsReadAction() {
+  try {
+    await api.post("/api/v1/alerts/read-all");
+    return { success: true };
+  } catch (error) {
+    console.error("Error marking all alerts as read:", error);
+    return throwServerActionError(error) as any;
   }
 }

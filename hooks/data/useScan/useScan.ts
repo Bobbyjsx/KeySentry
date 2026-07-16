@@ -1,13 +1,12 @@
+import { useExponentialPolling } from "@/hooks/utils/useExponentialPolling"
+import { getScanDetailsAction, getScanHistoryAction, startScanAction, type ScanDetails, type ScanHistoryRecord } from "@/lib/actions/scan"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { startScanAction, getScanHistoryAction, getScanDetailsAction, type ScanResult, type ScanHistoryRecord, type ScanDetails } from "@/lib/actions/scan"
-import type { ScanSource } from "@/lib/core/scan-manager"
 
 export function useStartScan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ sources, scanDepth }: { sources: ScanSource[]; scanDepth: "shallow" | "deep" }) =>
-      startScanAction(sources, scanDepth),
+    mutationFn: ({ target }: { target: string }) => startScanAction(target),
     onSuccess: () => {
       // Invalidate queries so dashboard, discoveries, alerts, and scan history fetch latest data
       queryClient.invalidateQueries({ queryKey: ["discoveries"] })
@@ -18,20 +17,16 @@ export function useStartScan() {
   })
 }
 
-export function useGetScanHistory(initialData?: ScanHistoryRecord[]) {
+export function useGetScanHistory() {
+  const getRefetchInterval = useExponentialPolling<ScanHistoryRecord[]>((data) => {
+    if (!data || !Array.isArray(data)) return false
+    return data.some((scan) => scan.status === "in_progress" || scan.status === "pending")
+  })
+
   return useQuery({
-    queryKey: ["scanHistory"],
+    queryKey: ["scans", "history"],
     queryFn: getScanHistoryAction,
-    initialData,
-    staleTime: 15 * 1000, // 15 seconds stale cache
-    refetchInterval: (query) => {
-      const data = query.state.data as ScanHistoryRecord[] | undefined
-      const hasInProgress = data?.some((scan) => scan.status === "in_progress")
-      if (hasInProgress) {
-        return 3000 // Poll every 3 seconds if any scan is in progress
-      }
-      return false
-    },
+    refetchInterval: getRefetchInterval,
   })
 }
 
@@ -41,12 +36,8 @@ export function useGetScanDetails(scanId: string, initialData?: ScanDetails) {
     queryFn: () => getScanDetailsAction(scanId),
     initialData,
     staleTime: 5000, // 5 seconds stale cache for details
-    refetchInterval: (query) => {
-      const data = query.state.data as ScanDetails | undefined
-      if (data?.scan?.status === "in_progress") {
-        return 2000 // Poll every 2 seconds while scan is in progress
-      }
-      return false
-    },
+    refetchInterval: useExponentialPolling<ScanDetails>((data) => {
+      return data?.scan?.status === "in_progress" || data?.scan?.status === "pending"
+    }),
   })
 }

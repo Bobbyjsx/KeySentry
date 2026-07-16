@@ -2,44 +2,61 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { useSupabase } from "./AuthProvider"
+import { Input } from "@/components/ui/input"
 import { Shield, Key, Loader2, Sparkles } from "lucide-react"
 import { toast } from "sonner"
+import { useForgotPassword } from "@/hooks/data/useAuth/useAuth"
+import { notifyServerError, isServerError } from "@/lib/server-error"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+})
+
+type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
 
 export default function ForgotPasswordForm() {
-  const { supabase } = useSupabase()
-  const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const forgotPasswordMutation = useForgotPassword()
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  })
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+  const isLoading = forgotPasswordMutation.isPending
+
+  const onSubmit = async (data: ForgotPasswordFormValues) => {
     setError(null)
     setMessage(null)
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      })
+    forgotPasswordMutation.mutate(data.email, {
+      onSuccess: (result) => {
+        if (isServerError(result)) {
+          const errMsg = notifyServerError(result)
+          setError(Array.isArray(errMsg) ? errMsg[0] : errMsg)
+          return
+        }
 
-      if (error) {
-        setError(error.message)
-        toast.error(error.message)
-        return
+        const successMsg = "Check your email for the password reset link"
+        setMessage(successMsg)
+        toast.success(successMsg)
+      },
+      onError: (err) => {
+        setError("An unexpected error occurred")
+        toast.error("An unexpected error occurred")
+        console.error(err)
       }
-
-      const successMsg = "Check your email for the password reset link"
-      setMessage(successMsg)
-      toast.success(successMsg)
-    } catch (err) {
-      setError("An unexpected error occurred")
-      toast.error("An unexpected error occurred")
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
+    })
   }
 
   return (
@@ -64,7 +81,7 @@ export default function ForgotPasswordForm() {
         </p>
       </div>
 
-      <form onSubmit={handleResetPassword} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         {error && (
           <div className="p-3.5 text-caption-mono-sm font-mono uppercase text-red-400 border border-red-500/20 bg-canvas-soft">
             {error}
@@ -78,21 +95,15 @@ export default function ForgotPasswordForm() {
           </div>
         )}
 
-        <div className="space-y-2">
-          <label htmlFor="email" className="block text-caption-mono-sm font-mono uppercase text-gray-400">
-            Email Address
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@domain.com"
-            className="block w-full px-3.5 py-2.5 rounded-sm border border-hairline bg-canvas-soft text-sm text-white placeholder-gray-600 outline-none focus:border-white transition-colors"
-          />
-        </div>
+        <Input
+          id="email"
+          type="email"
+          label="Email Address"
+          required
+          placeholder="name@domain.com"
+          error={errors.email?.message}
+          {...register("email")}
+        />
 
         <div className="pt-2">
           <button

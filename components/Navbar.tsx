@@ -4,15 +4,17 @@ import { Bell, Menu, Search } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSupabase } from "./auth/AuthProvider"
+import { useSession } from "next-auth/react"
 import { useGetUnreadAlertsCount } from "@/hooks/data/useAlerts/useAlerts"
+import { Input } from "@/components/ui/input"
 
 interface NavbarProps {
   toggleSidebar: () => void
 }
 
 const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
-  const { user } = useSupabase()
+  const { data: session } = useSession()
+  const user = session?.user as any
   const { data: unreadCount = 0 } = useGetUnreadAlertsCount()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
@@ -41,16 +43,13 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
 
         <div className="flex-1 max-w-xl mx-4">
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={16} className="text-gray-500" />
-            </div>
-            <input
+            <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
               placeholder="Search for keys, providers, or domains..."
-              className="block w-full pl-10 pr-3 py-2 rounded-pill bg-canvas-soft border border-hairline placeholder-gray-500 text-white font-sans text-sm focus:outline-none focus:border-white focus:ring-0 transition-colors"
+              leftNode={<Search size={16} className="text-gray-500" />}
             />
           </div>
         </div>
@@ -67,12 +66,12 @@ const Navbar: React.FC<NavbarProps> = ({ toggleSidebar }) => {
               </span>
             )}
           </button>
-          {user?.user_metadata?.name && (
+          {user?.name && (
             <div className="flex items-center space-x-2">
               <div className="h-8 w-8 rounded-pill border border-hairline bg-canvas-soft flex items-center justify-center">
-                <span className="text-xs font-mono text-white">{user?.user_metadata?.name.substring(0, 2).toUpperCase()}</span>
+                <span className="text-xs font-mono text-white">{user?.name.substring(0, 2).toUpperCase()}</span>
               </div>
-              <span className="hidden sm:inline text-xs font-mono text-gray-400 uppercase tracking-wider">{user?.user_metadata?.name}</span>
+              <span className="hidden sm:inline text-xs font-mono text-gray-400 uppercase tracking-wider">{user?.name}</span>
             </div>
           )}
         </div>

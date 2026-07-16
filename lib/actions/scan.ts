@@ -1,131 +1,94 @@
-"use server"
+"use server";
 
-import { keysToCamel } from "@/lib/case-transform"
-import { runGitHubScan, type ScanSource } from "@/lib/core/scan-manager"
-import {
-  createScanHistoryDAL,
-  getScanHistoryDAL,
-  getScanHistoryDetailsDAL,
-  getScanDiscoveriesDAL,
-} from "@/lib/dal/scans"
-import { requireAuth } from "@/lib/auth-server"
-import { getSettingsDAL } from "@/lib/dal/settings"
+import { api } from "@/lib/axios";
+import { throwServerActionError } from "../server-error";
+import type { ApiKeyDiscovery } from "./discoveries";
 
-export interface ScanResult {
-  success: boolean
-  keysFound?: number
-  durationSeconds?: number
-  scanId?: string
-  error?: string
+export interface ScanSource {
+  id?: string;
+  type: string;
+  value: string;
+  name?: string;
 }
 
-export async function startScanAction(
-  sources: ScanSource[],
-  scanDepth: "shallow" | "deep"
-): Promise<ScanResult> {
-  try {
-    const { user, supabase } = await requireAuth()
-
-    // Retrieve settings to check for GitHub token configuration
-    const settings = await getSettingsDAL(user.id)
-    if (!settings || !settings.github_token) {
-      return {
-        success: false,
-        error: "GitHub token is missing. Please configure your GitHub API token in Settings before running a scan."
-      }
-    }
-
-    // Create scan history record in_progress via DAL
-    const scanHistoryData = {
-      scan_date: new Date().toISOString(),
-      keys_found: 0,
-      sources_scanned: sources.length,
-      duration_seconds: 0,
-      status: "in_progress",
-      sources: sources as any,
-      repos_scanned: 0,
-      files_scanned: 0,
-      trigger: "manual",
-    }
-
-    const scanData = await createScanHistoryDAL(user.id, scanHistoryData)
-
-    // Invoke the Supabase Edge Function to process the scan asynchronously
-    try {
-      const { error: invokeError } = await supabase.functions.invoke("run-scan", {
-        body: {
-          userId: user.id,
-          sources,
-          scanId: scanData.id,
-        },
-      })
-      if (invokeError) throw invokeError
-    } catch (error) {
-      console.error("Failed to invoke Edge Function, falling back to local background execution:", error)
-      // Fallback: run local background task if Edge Function fails to trigger
-      runGitHubScan(user.id, sources, scanData.id).catch((err: any) => {
-        console.error(`Background fallback scan failed for session ${scanData.id}:`, err)
-      })
-    }
-
-    return {
-      success: true,
-      keysFound: 0,
-      durationSeconds: 0,
-      scanId: scanData.id,
-    }
-  } catch (err: any) {
-    console.error("Error in startScanAction:", err)
-    return {
-      success: false,
-      error: err.message || "Failed to start scan"
-    }
-  }
+export interface ScanResult {
+  scanId: string;
 }
 
 export interface ScanHistoryRecord {
-  id: string
-  userId: string
-  scanDate: string
-  keysFound: number
-  sourcesScanned: number
-  durationSeconds: number
-  status: string
-  sources?: ScanSource[]
-  reposScanned: number
-  filesScanned: number
-  trigger: string
-  triggerLink: string | null
-}
-
-export async function getScanHistoryAction(): Promise<ScanHistoryRecord[]> {
-  const { user } = await requireAuth()
-  const data = await getScanHistoryDAL(user.id)
-  return keysToCamel<ScanHistoryRecord[]>(data)
+  id: string;
+  scanDate: string;
+  status: string;
+  trigger: string;
+  triggerLink?: string;
+  sourcesScanned: number;
+  reposScanned: number;
+  filesScanned: number;
+  durationSeconds: number;
+  keysFound: number;
+  sources?: { type: string; value: string }[];
 }
 
 export interface ScanDetails {
-  scan: ScanHistoryRecord
-  keys: {
-    id: string
-    keyHash: string
-    provider: string
-    discoveredAt: string
-    status: string
-    source: string
-    link?: string | null
-    repository?: string | null
-    riskLevel: string
-  }[]
+  scan: ScanHistoryRecord;
+  keys: ApiKeyDiscovery[];
 }
 
-export async function getScanDetailsAction(scanId: string): Promise<ScanDetails> {
-  const { user } = await requireAuth()
-  const scanData = await getScanHistoryDetailsDAL(user.id, scanId)
-  const keysData = await getScanDiscoveriesDAL(user.id, scanId)
+export async function startScanAction(target: string) {
+  try {
+    const { data } = await api.post("/api/v1/scans/trigger", {
+      target,
+    });
+    return data;
+  } catch (error) {
+    return throwServerActionError(error);
+  }
+}
 
-  return {
-    scan: keysToCamel<ScanHistoryRecord>(scanData),
-    keys: keysToCamel<ScanDetails["keys"]>(keysData || []),
+export async function getScanHistoryAction(): Promise<ScanHistoryRecord[]> {
+  try {
+    const { data } = await api.get("/api/v1/scans/history");
+    return data;
+  } catch (error) {
+    console.error("Error fetching scan history:", error);
+    return throwServerActionError(error) as any;
+  }
+}
+
+export async function getScanDetailsAction(scanId: string) {
+  try {
+    const { data } = await api.get(`/api/v1/scans/${scanId}`);
+    return data;
+  } catch (error) {
+    console.error("Error fetching scan details:", error);
+    return throwServerActionError(error) as any;
+  }
+}
+
+export async function getScansAction(page = 1, pageSize = 20) {
+  try {
+    const { data } = await api.get(
+      `/api/v1/scans?page=${page}&pageSize=${pageSize}`,
+    );
+    return data;
+  } catch (error) {
+    console.error("Error fetching scans:", error);
+    return throwServerActionError(error) as any;
+  }
+}
+
+export async function runManualScanAction(
+  targetType: "github_org" | "github_user" | "github_repo" | "local_dir",
+  targetValue: string,
+) {
+  try {
+    const { data } = await api.post("/api/v1/scans/manual", {
+      targetType,
+      targetValue,
+    });
+    return { success: true, scanId: data.id };
+  } catch (error) {
+    console.error("Error running manual scan:", error);
+    return throwServerActionError(error);
   }
 }
