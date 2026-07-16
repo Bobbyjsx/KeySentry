@@ -1,1 +1,3 @@
 pnpm run lint
+echo "Compiling typescript..."
+npx tsc --noEmit

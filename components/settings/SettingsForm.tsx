@@ -1,55 +1,67 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { Moon, Save, Settings, Sun, Loader2, ShieldAlert, Search, Eye, EyeOff } from "lucide-react"
-import { useState, useEffect } from "react"
-import { useGetSettings, useSaveSettings } from "@/hooks/data/useSettings/useSettings"
-import type { UserSettings } from "@/lib/actions/settings"
-import { useSession } from "next-auth/react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { toast } from "sonner"
-import { notifyServerError, isServerError } from "@/lib/server-error"
-import { Input } from "@/components/ui/input"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
+import { Input } from "@/components/ui/input";
+import {
+  useGetSettings,
+  useSaveSettings,
+} from "@/hooks/data/useSettings/useSettings";
+import { isServerError, notifyServerError } from "@/lib/server-error";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff, Loader2, Moon, Save, Settings, Sun } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
 const settingsSchema = z.object({
   emailAlerts: z.boolean(),
-  slackWebhook: z.string().optional().refine((val) => {
-    if (!val) return true;
-    try {
-      const url = new URL(val);
-      return url.protocol === "http:" || url.protocol === "https:";
-    } catch {
-      return false;
-    }
-  }, { message: "Slack Webhook must be a valid http or https URL" }),
-  githubToken: z.string().optional().refine((val) => {
-    if (!val) return true;
-    return val.startsWith("ghp_") || val.startsWith("github_pat_");
-  }, { message: "GitHub Token must start with 'ghp_' or 'github_pat_'" }),
+  slackWebhook: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        try {
+          const url = new URL(val);
+          return url.protocol === "http:" || url.protocol === "https:";
+        } catch {
+          return false;
+        }
+      },
+      { message: "Slack Webhook must be a valid http or https URL" },
+    ),
+  githubToken: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        return val.startsWith("ghp_") || val.startsWith("github_pat_");
+      },
+      { message: "GitHub Token must start with 'ghp_' or 'github_pat_'" },
+    ),
   scanFrequency: z.enum(["hourly", "daily", "weekly", "monthly", "manual"]),
   theme: z.enum(["light", "dark"]),
-})
+});
 
-type SettingsFormValues = z.infer<typeof settingsSchema>
+type SettingsFormValues = z.infer<typeof settingsSchema>;
 
 export default function SettingsForm() {
-  const { data: session } = useSession()
-  const user = session?.user as any
-  const [showToken, setShowToken] = useState(false)
-  const [isChangingToken, setIsChangingToken] = useState(false)
+  const { data: session } = useSession();
+  const user = session?.user as any;
+  const [showToken, setShowToken] = useState(false);
+  const [isChangingToken, setIsChangingToken] = useState(false);
   const defaultSettings: SettingsFormValues = {
     emailAlerts: true,
     slackWebhook: "",
     githubToken: "",
     scanFrequency: "daily",
     theme: "dark",
-  }
+  };
 
-  const { data: initialSettings, isLoading } = useGetSettings()
-  const saveMutation = useSaveSettings()
+  const { data: initialSettings, isLoading } = useGetSettings();
+  const saveMutation = useSaveSettings();
 
   const {
     register,
@@ -57,19 +69,20 @@ export default function SettingsForm() {
     reset,
     watch,
     formState: { errors },
+    getValues,
   } = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: defaultSettings,
-  })
+  });
 
-  const themeValue = watch("theme")
-  const scanFrequencyValue = watch("scanFrequency")
+  const themeValue = watch("theme");
+  const scanFrequencyValue = watch("scanFrequency");
 
   useEffect(() => {
     if (initialSettings) {
       if (isServerError(initialSettings)) {
-        notifyServerError(initialSettings)
-        return
+        notifyServerError(initialSettings);
+        return;
       }
       reset({
         emailAlerts: initialSettings.emailAlerts ?? true,
@@ -77,34 +90,34 @@ export default function SettingsForm() {
         githubToken: initialSettings.githubToken || "",
         scanFrequency: (initialSettings.scanFrequency as any) || "daily",
         theme: (initialSettings.theme as any) || "dark",
-      })
+      });
       if (!initialSettings.hasGithubToken) {
-        setIsChangingToken(true)
+        setIsChangingToken(true);
       }
     }
-  }, [initialSettings, reset])
+  }, [initialSettings, reset]);
 
   const onSubmit = async (data: SettingsFormValues) => {
     saveMutation.mutate(data, {
       onSuccess: (result) => {
         if (isServerError(result)) {
-          notifyServerError(result)
-          return
+          notifyServerError(result);
+          return;
         }
-        toast.success("Settings saved successfully")
+        toast.success("Settings saved successfully");
       },
       onError: (error: any) => {
-        toast.error(error.message || "Failed to save settings")
+        toast.error(error.message || "Failed to save settings");
       },
-    })
-  }
+    });
+  };
 
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center rounded-sm border border-hairline bg-canvas-card p-6">
         <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
-    )
+    );
   }
 
   return (
@@ -117,20 +130,28 @@ export default function SettingsForm() {
                 <Settings className="mr-2 h-4 w-4 text-white" />
                 General Settings
               </h2>
-              <p className="text-sm text-gray-400">Configure your general application preferences.</p>
+              <p className="text-sm text-gray-400">
+                Configure your general application preferences.
+              </p>
             </div>
-            
+
             {user?.email && (
               <div className="rounded-sm border border-hairline bg-canvas-soft px-4 py-2 flex flex-col justify-center min-w-[200px]">
-                <span className="font-mono text-[9px] uppercase text-gray-500 tracking-wider">Account (Authenticated)</span>
-                <span className="font-mono text-xs text-white mt-0.5">{user.email}</span>
+                <span className="font-mono text-[9px] uppercase text-gray-500 tracking-wider">
+                  Account (Authenticated)
+                </span>
+                <span className="font-mono text-xs text-white mt-0.5">
+                  {user.email}
+                </span>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 pt-2">
             <div className="space-y-2">
-              <label className="block font-mono text-[10px] uppercase text-gray-400 tracking-caption-mono-sm">Theme</label>
+              <label className="block font-mono text-[10px] uppercase text-gray-400 tracking-caption-mono-sm">
+                Theme
+              </label>
               <div className="flex items-center space-x-6">
                 <label className="flex cursor-pointer items-center space-x-2">
                   <input
@@ -140,7 +161,9 @@ export default function SettingsForm() {
                     className="h-4 w-4 border-hairline bg-canvas-soft text-white focus:ring-0 focus:ring-offset-0"
                   />
                   <Sun className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-300 font-mono text-xs uppercase tracking-wider">Light</span>
+                  <span className="text-sm text-gray-300 font-mono text-xs uppercase tracking-wider">
+                    Light
+                  </span>
                 </label>
 
                 <label className="flex cursor-pointer items-center space-x-2">
@@ -151,13 +174,17 @@ export default function SettingsForm() {
                     className="h-4 w-4 border-hairline bg-canvas-soft text-white focus:ring-0 focus:ring-offset-0"
                   />
                   <Moon className="h-4 w-4 text-gray-400" />
-                  <span className="text-sm text-gray-300 font-mono text-xs uppercase tracking-wider">Dark</span>
+                  <span className="text-sm text-gray-300 font-mono text-xs uppercase tracking-wider">
+                    Dark
+                  </span>
                 </label>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="block font-mono text-[10px] uppercase text-gray-400 tracking-caption-mono-sm">Scan Frequency</label>
+              <label className="block font-mono text-[10px] uppercase text-gray-400 tracking-caption-mono-sm">
+                Scan Frequency
+              </label>
               <select
                 {...register("scanFrequency")}
                 className="block w-full rounded-pill border border-hairline bg-canvas-soft py-2 px-3 text-sm text-white focus:outline-none focus:border-white transition-colors"
@@ -172,8 +199,12 @@ export default function SettingsForm() {
           </div>
 
           <div className="border-t border-hairline pt-6">
-            <h2 className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">Notifications</h2>
-            <p className="mt-1 text-sm text-gray-400">Configure how you want to be notified about new discoveries.</p>
+            <h2 className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">
+              Notifications
+            </h2>
+            <p className="mt-1 text-sm text-gray-400">
+              Configure how you want to be notified about new discoveries.
+            </p>
           </div>
 
           <div className="space-y-4">
@@ -187,10 +218,16 @@ export default function SettingsForm() {
                 />
               </div>
               <div className="ml-3 text-sm">
-                <label htmlFor="emailAlerts" className="font-mono text-xs uppercase text-gray-300 tracking-wider">
+                <label
+                  htmlFor="emailAlerts"
+                  className="font-mono text-xs uppercase text-gray-300 tracking-wider"
+                >
                   Email Alerts
                 </label>
-                <p className="text-xs text-gray-500">Receive email notifications for new API key discoveries and alerts.</p>
+                <p className="text-xs text-gray-500">
+                  Receive email notifications for new API key discoveries and
+                  alerts.
+                </p>
               </div>
             </div>
 
@@ -206,16 +243,24 @@ export default function SettingsForm() {
           </div>
 
           <div className="border-t border-hairline pt-6">
-            <h2 className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">API Configuration</h2>
-            <p className="mt-1 text-sm text-gray-400">Configure API tokens for scanning services.</p>
+            <h2 className="font-mono text-caption-mono-sm uppercase text-white tracking-caption-mono">
+              API Configuration
+            </h2>
+            <p className="mt-1 text-sm text-gray-400">
+              Configure API tokens for scanning services.
+            </p>
           </div>
 
           <div className="space-y-1.5">
             {initialSettings?.hasGithubToken && !isChangingToken ? (
               <div className="flex items-center justify-between rounded-sm border border-hairline bg-canvas-soft p-4">
                 <div>
-                  <h3 className="font-mono text-xs uppercase text-white tracking-wider">GitHub Token Configured</h3>
-                  <p className="text-xs text-gray-500 mt-1">Your token is securely stored and actively used for scans.</p>
+                  <h3 className="font-mono text-xs uppercase text-white tracking-wider">
+                    GitHub Token Configured
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your token is securely stored and actively used for scans.
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -249,8 +294,8 @@ export default function SettingsForm() {
                   <button
                     type="button"
                     onClick={() => {
-                      setIsChangingToken(false)
-                      reset({ ...getValues(), githubToken: "" })
+                      setIsChangingToken(false);
+                      reset({ ...getValues(), githubToken: "" });
                     }}
                     className="text-xs font-mono uppercase text-gray-500 hover:text-white transition-colors"
                   >
@@ -283,5 +328,5 @@ export default function SettingsForm() {
         </form>
       </div>
     </div>
-  )
+  );
 }
