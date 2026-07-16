@@ -250,7 +250,7 @@ export default function SettingsForm() {
                     type="button"
                     onClick={() => {
                       setIsChangingToken(false)
-                      reset({ ...watch(), githubToken: "" })
+                      reset({ ...getValues(), githubToken: "" })
                     }}
                     className="text-xs font-mono uppercase text-gray-500 hover:text-white transition-colors"
                   >
