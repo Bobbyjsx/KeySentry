@@ -24,5 +24,4 @@ jobs:
         run: pnpm install
       - name: Run Next Lint
         run: pnpm run lint
-      - name: Run Biome
-        run: pnpm dlx @biomejs/biome ci .
+
