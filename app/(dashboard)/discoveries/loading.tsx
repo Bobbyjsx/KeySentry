@@ -1,9 +1,8 @@
-import Layout from "@/components/Layout"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function DiscoveriesLoading() {
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <Skeleton className="h-8 w-48 bg-gray-700" />
@@ -31,6 +30,6 @@ export default function DiscoveriesLoading() {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   )
 }

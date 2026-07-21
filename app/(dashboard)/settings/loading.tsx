@@ -1,9 +1,8 @@
-import Layout from "@/components/Layout"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function SettingsLoading() {
   return (
-    <Layout>
+    <>
       <div className="space-y-6">
         <Skeleton className="h-8 w-32 bg-gray-700" />
 
@@ -34,6 +33,6 @@ export default function SettingsLoading() {
           </div>
         </div>
       </div>
-    </Layout>
+    </>
   )
 }
