@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { api } from "./lib/axios";
 
 export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
   providers: [
@@ -13,13 +12,17 @@ export const { handlers, signIn, signOut, auth, unstable_update } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
 
         try {
-          const res = await api.post("/api/v1/auth/login", credentials);
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/v1/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(credentials)
+          });
 
-          if (res.status !== 200) {
+          if (!res.ok) {
             return null;
           }
 
-          const user = await res.data;
+          const user = await res.json();
           console.log(user);
           return user;
         } catch (error) {

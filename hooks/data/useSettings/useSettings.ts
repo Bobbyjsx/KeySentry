@@ -19,7 +19,7 @@ export function useSaveSettings() {
     },
     onSuccess: (data) => {
       if (!isServerError(data)) {
-        queryClient.setQueryData(["settings"], data)
+        queryClient.invalidateQueries({ queryKey: ["settings"] })
       }
     },
   })

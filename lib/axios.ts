@@ -1,4 +1,3 @@
-import { auth, unstable_update } from "@/auth";
 import axios, { InternalAxiosRequestConfig } from "axios";
 
 export const baseURL =
@@ -23,7 +22,14 @@ export interface RetryAxiosRequestConfig extends InternalAxiosRequestConfig {
 api.interceptors.request.use(
   async (config) => {
     try {
-      const session = await auth();
+      let session: any = null;
+      if (typeof window === "undefined") {
+        const { auth } = await import("@/auth");
+        session = await auth();
+      } else {
+        const { getSession } = await import("next-auth/react");
+        session = await getSession();
+      }
       const token = session?.accessToken;
 
       // Ensure headers object exists
@@ -104,7 +110,15 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const session = await auth();
+        let session: any = null;
+        if (typeof window === "undefined") {
+          const { auth } = await import("@/auth");
+          session = await auth();
+        } else {
+          const { getSession } = await import("next-auth/react");
+          session = await getSession();
+        }
+        
         const refreshToken =
           (session?.user as any)?.refreshToken ||
           (session?.user as any)?.refresh_token;
@@ -119,15 +133,32 @@ api.interceptors.response.use(
             const newAccessToken = res.data.access_token;
             const newRefreshToken = res.data.refresh_token || refreshToken;
 
-            // Update NextAuth session natively
-            if (typeof unstable_update === "function" && session) {
-              await unstable_update({
-                user: {
-                  ...session.user,
-                  accessToken: newAccessToken,
-                  refreshToken: newRefreshToken,
+            // Update NextAuth session
+            const newSessionData = {
+              user: {
+                ...session.user,
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+              },
+            };
+
+            if (typeof window === "undefined") {
+              const { unstable_update } = await import("@/auth");
+              if (typeof unstable_update === "function" && session) {
+                await unstable_update(newSessionData);
+              }
+            } else {
+              // On the client, call the NextAuth session endpoint to trigger an update
+              await fetch("/api/auth/session", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
                 },
+                body: JSON.stringify({ data: newSessionData }),
               });
+              // Broadcast event to other tabs/components
+              const event = new Event("visibilitychange");
+              document.dispatchEvent(event);
             }
 
             processQueue(null, newAccessToken);
