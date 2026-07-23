@@ -191,6 +191,18 @@ export default function ScanDetailsView({
         </div>
       </div>
 
+      {scan.error && (
+        <div className={`p-4 rounded-sm border ${scan.status === "failed" ? "bg-red-500/10 border-red-500/20 text-red-400" : "bg-accent-sunset/10 border-accent-sunset/20 text-accent-sunset"} flex items-start space-x-3`}>
+          <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <div>
+            <h4 className="text-sm font-mono font-medium uppercase mb-1">
+              {scan.status === "failed" ? "Scan Failed" : `Scan Interrupted (Retrying - Attempt ${scan.attempt})`}
+            </h4>
+            <p className="text-sm">{scan.error}</p>
+          </div>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* Date Run */}
